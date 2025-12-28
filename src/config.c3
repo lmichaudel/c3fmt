@@ -1,20 +1,27 @@
 module c3fmt;
 
+enum BraceStyle {
+    ALLMAN,
+    K_AND_R
+}
+
 struct Config {
-	bool use_tab_for_indentation;
-    uint indent_size;
-    uint max_line_width;
-    bool braces_same_line;
-    bool else_on_closing_brace;
+    bool use_tabs;
+    uint tab_size;
+    uint indent_width;
+
+    BraceStyle brace_style;
+    bool else_on_new_line;
 }
 
 fn Config default_config()
 {
     return {
-		.use_tab_for_indentation = true,
-        .indent_size = 4,
-        .max_line_width = 80,
-        .braces_same_line = true,
-        .else_on_closing_brace = true
+        .use_tabs = false,
+        .tab_size = 4,
+        .indent_width = 4,
+
+        .brace_style = ALLMAN,
+        .else_on_new_line = true,
     };
 }

@@ -1,25 +1,30 @@
-struct MyData {
+struct MyData
+{
     char* name;
     String open, close;
 
-    struct other {
+    struct other
+    {
         int value;
         int status;
     }
 
-    struct {
+    struct
+    {
         int value;
         int status;
     }
 
     int in_between;
 
-    union {
+    union
+    {
         Person* person;
         Company* company;
     }
 
-    union either {
+    union either
+    {
         int this;
         bool or;
         char* that;

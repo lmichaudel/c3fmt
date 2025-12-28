@@ -4,12 +4,16 @@ A customizable code formatter for the C3 language, written in C3.
 
 ## About the parser 
 
-I use Tree Sitter to generate a tree that is then walked down.
-Would be nice to instead rely on the official C3 parser.
+C3fmt use tree-sitter to generate a tree that is then walked down.
 
-## Test and code coverage
-The final goal is to support the whole grammar of c3. 
+For the moment it's very experimental and doesn't even support the whole language.
+If c3fmt doesn't know how to format a bit of code, it will not touch it.
 
-The test consist of a corpus of many code snippet and an expected output. For each test c3fmt will format it and compare it to the expected output.
+## Test
 
-Next, c3fmt will format the whole standard library and check that it didn't change the semantic
+The final goal is obviously to support the whole grammar of c3. 
+
+There are two tests for the moment :
+
+- Corpus takes a `.c3` source file, format it and compare it the same file with a `.c3f` format corresponding to the expected output.
+- Stdlib formats every file from the C3 standard library, then verifiy it still compiles with the same semantic.

@@ -1,4 +1,4 @@
-/* 
+/*
     Treesitter Helpers
 */
 module ts;
@@ -38,11 +38,11 @@ fn String TSNode.field_name(self) {
 
 fn bool TSNode.is_comment(self) {
     String node_type = self.type();
-    
-    return node_type == "line_comment";
+
+    return node_type == "line_comment" || node_type == "block_comment";
 }
 
-/* 
+/*
     C3Fmt Helpers
 */
 
@@ -78,21 +78,34 @@ fn void C3Fmt.newline(&self) {
 fn void C3Fmt.flush_line(&self, bool write_newline = true) => @pool() {
     DString indented;
     indented.tinit(64);
-    
+
     if(self.line_buffer.text.str_view() != "") { // avoid outputting empty line with spaces
         for(usz i = 0; i < self.context.indent_level; ++i) {
-            indented.append("    ");
+            if(self.config.use_tabs) {
+                indented.append("\t");
+            } else {
+                for(usz j = 0; j < self.config.indent_width; ++j) {
+                    indented.append(" ");
+                }
+            }
         }
     }
 
     DString final = indented.tconcat(self.line_buffer.text);
+
+    // Trim
+    while(final.len() != 0
+        && (final[final.len() - 1] == ' ' || final[final.len() - 1] == '\t'))
+    {
+        final.chop(final.len() - 1);
+    }
 
     self.output_code.append(final);
     if(write_newline) {
         self.output_code.append_char('\n');
     }
 
-    self.line_buffer.text.free(); 
+    self.line_buffer.text.free();
     self.line_buffer.wrap_points.free();
 
     self.line_buffer.text.init(mem, 64);
@@ -109,7 +122,7 @@ fn void C3Fmt.deindent(&self) {
 
 fn bool String[].contains(&self, String str) {
     foreach(String token : self) {
-        if(token == str) { 
+        if(token == str) {
             return true;
         }
     }

@@ -16,9 +16,12 @@ macro test($name, $input_path, $solution_path) {
     for(usz i = 0; i < len; ++i) {
         if(solution[i] != formatted[i]) {
             io::eprintfn("Character mismatch '%c' vs '%c' on line %s.", solution[i], formatted[i], line);
-            input.free(mem); 
+            input.free(mem);
             solution.free(mem);
             formatted.free(mem);
+
+            io::eprintfn("For context, here is the output :");
+            io::eprintfn("%s", formatted);
             assert(false);
         }
 

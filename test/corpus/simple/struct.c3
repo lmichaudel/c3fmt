@@ -1,9 +1,9 @@
 struct MyData
 {
     char* name ;
-    String open , close;
+    String open , close;  
 
-    struct other
+    struct other 
     {
         int value;
         int status;
@@ -15,18 +15,17 @@ struct MyData
         status;
     }
 
-    int  in_between;
+    int  in_between; 
 
     union
     {
-        Person* person;
+        Person *person;
         Company* company;
     }
 
     union either
     {
-        int this;
-        bool  or;
-        char* that;
+        int   this;
+        bool  or; char* that;
     }
 }

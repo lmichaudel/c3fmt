@@ -33,9 +33,9 @@ fn String? read_file(String file_name) {
 
 fn int main(String[] args)
 {
-    if (args.len != 2)
+    if (args.len < 2)
     {
-        io::eprintn("Usage: formatter <source_file>");
+        io::eprintn("Usage: formatter <source_file> [-debug]");
         return 1;
     }
 
@@ -55,9 +55,12 @@ fn int main(String[] args)
         return 1;
     }
 
-    io::printfn("---------------");
-    io::printfn("%s", formatted);
-    io::printfn("---------------");
+    if(args.len < 3) {
+        io::printfn("---------------");
+        io::printfn("%s", formatted);
+        io::printfn("---------------");
+    }
+
 
 	return 0;
 }
