@@ -1,0 +1,20 @@
+{
+  "langrev": "1",
+  "warnings":  [ "no-unused" ],
+  "dependency-search-paths":  [],
+  "dependencies":  [],
+  "authors":  [ "Lucas Michaudel <lucas.michaudel@gmail.com>" ],
+  "version": "1.0.0",
+  "sources":  [ "src-formatted/**" ],
+  "test-sources":  [ ],
+  "build-dir": "build",
+  "output": "build",
+  "targets": {
+    "stdlib": {
+      "type": "static-lib"
+    }
+  },
+  "cpu": "generic",
+  "opt": "O0",
+  "use-stdlib": false
+}

@@ -6,7 +6,7 @@
   "authors":  [ "Lucas Michaudel <lucas.michaudel@gmail.com>" ],
   "version": "0.0.1",
   "sources":  [ "src/**" ],
-  "test-sources":  [ "test/corpus.c3" ],
+  "test-sources":  [ "test/corpus.c3", "test/stdlib.c3" ],
   "build-dir": "build",
   "output": "build",
   "targets": {

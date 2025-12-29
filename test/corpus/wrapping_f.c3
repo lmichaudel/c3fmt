@@ -10,3 +10,9 @@ fn int main(
         30
     );
 }
+
+fn int Termios.setAttr(
+    &self,
+    Fd fd,
+    Tcactions optional_actions
+) @deprecated => self.set_attr(fd, optional_actions);

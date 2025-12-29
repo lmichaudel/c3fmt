@@ -144,16 +144,15 @@ fn void C3Fmt.flush_line(&self, bool write_newline = true) => @pool() {
             }
         }
 
+        usz azez = self.line_buffer.wrap_points.len();
+
         if(has_arg_wp) {
-            DString line = self.line_buffer.text.copy(tmem);
+            DString line = self.line_buffer.text.copy(mem);
+            defer line.free();
             usz offset = 0;
+
             foreach(WrapPoint wp : self.line_buffer.wrap_points) {
                 if(wp.kind == ARG) {
-                    // remove white space if there is one
-                    if(line[wp.where + offset] == ' ') {
-                        line.delete(wp.where + offset);
-                    }
-
                     line.insert_at(wp.where + offset, "\n");
                     offset += 1;
                     for(usz j = 0; j < self.config.indent_width; ++j) {
@@ -162,16 +161,20 @@ fn void C3Fmt.flush_line(&self, bool write_newline = true) => @pool() {
                     }
                 }
                 if(wp.kind == ARG_CLOSE_PAREN) {
-                    line.insert_at(wp.where + offset - 1, "\n");
+                    line.insert_at(wp.where + offset, "\n");
                     offset += 1;
-                }
 
+                    // TODO check if it was enough
+                    // if it was not try to continue, there might be other wrap
+                    // points after
+                    break;
+                }
             }
+
             self.reset_line_buffer();
             self.append_str(line.str_view());
             return;
         }
-
     }
 
     DString final = indent.tconcat(self.line_buffer.text);

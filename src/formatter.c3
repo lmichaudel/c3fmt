@@ -56,6 +56,8 @@ struct C3Fmt
 
     DString output_code;
     LineBuffer line_buffer;
+
+    bool wrapping_allowed;
 }
 
 fn C3Fmt new(Allocator allocator, String source_code, Config config) {
@@ -64,9 +66,7 @@ fn C3Fmt new(Allocator allocator, String source_code, Config config) {
     instance.source_code = source_code.copy(allocator);
     instance.config = config;
     instance.output_code = dstring::new(allocator);
-
-    instance.line_buffer.text.init(mem, 64);
-    instance.line_buffer.wrap_points.init(mem);
+    instance.wrapping_allowed = true;
 
     return instance;
 }
@@ -92,6 +92,9 @@ fn void? C3Fmt.format(&self) {
     if(ts::node_has_error(root)) {
         return SOURCE_CODE_CONTAIN_ERROR?;
     }
+
+    self.line_buffer.text.init(mem, 64);
+    self.line_buffer.wrap_points.init(mem);
 
     self.process_node(root);
     self.flush_line();
@@ -181,6 +184,14 @@ fn void C3Fmt.process_composite(&self, TSNode node,
         TSNode child = ts::node_child(node, i);
         String type = child.type();
 
+        if(i > 0 &&
+           !skip_space_type.contains(type) &&
+           !skip_space_if_after.contains(ts::node_child(node, i - 1).type())
+        )
+        {
+            self.white_space();
+        }
+
         // WRAP POINTS (EXPERIMENTAL)
         if((node.type() == "call_arg_list" && child.type() == "call_arg") ||
            (node.type() == "func_param_list" && child.type() == "param")
@@ -196,16 +207,11 @@ fn void C3Fmt.process_composite(&self, TSNode node,
             self.insert_wrap_point(ARG_CLOSE_PAREN);
         }
 
-        if(i > 0 &&
-           !skip_space_type.contains(type) &&
-           !skip_space_if_after.contains(ts::node_child(node, i - 1).type())
-        )
-        {
-            self.white_space();
-        }
-
         if(child.is_comment()) {
+            // if (!same_line) gobble space (rare)
             self.append_node_str(child);
+            self.newline();
+            // TODO
             continue;
         }
 
@@ -310,12 +316,13 @@ fn void C3Fmt.process_node(&self, TSNode node) {
         /* ======================================== */
         case "func_declaration":
             self.process_composite(node,
-                skip_space_type: { "func_param_list" },
+                skip_space_type: { ";", "func_param_list" },
                 append_newline: true
             );
         case "func_definition":
             self.process_composite(node,
                 skip_space_type: { "func_param_list" },
+                append_newline: true
             );
         case "func_header":
             self.process_composite(node,
@@ -328,7 +335,9 @@ fn void C3Fmt.process_node(&self, TSNode node) {
                 skip_space_if_after: { "(" },
             );
         case "param":
-            self.process_composite(node);
+            self.process_composite(node,
+                skip_space_if_after: { "&" },
+            );
         case "param_default":
             self.process_composite(node);
         case "lambda_declaration":
@@ -344,12 +353,14 @@ fn void C3Fmt.process_node(&self, TSNode node) {
                 case "compound_stmt":
                     self.process_compound(child,
                         opening_delimiter: "\n{\n",
-                        closing_delimiter: "}\n",
+                        closing_delimiter: "}",
                         increase_indent: true
                     );
                 case "implies_body":
                 case "=>":
-                    self.process_composite(node, append_newline: true);
+                    self.wrapping_allowed = false;
+                    self.process_composite(node, append_newline: false);
+                    self.wrapping_allowed = true;
             }
         case "implies_body":
             self.process_composite(node);
@@ -718,6 +729,7 @@ fn void C3Fmt.process_node(&self, TSNode node) {
             );
         case "ct_switch_stmt":
             self.append_node_str(node); // TODO, need special handling...
+            self.newline();
         /* todo
 
         asm_stmt

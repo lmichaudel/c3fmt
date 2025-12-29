@@ -22,4 +22,4 @@ The final goal is obviously to support the whole grammar of c3.
 There are two tests for the moment :
 
 - Corpus takes a `.c3` source file, format it and compare it the same file with a `_f.c3` format corresponding to the expected output.
-- Stdlib formats every file from the C3 standard library, then verifiy it still compiles with the same semantic.
+- Stdlib formats every file from the C3 standard library, then verifiy it still compiles with the same semantic. (For the moment it won't automatically try to compile it, but you can go to `test/stdlib` and run `c3c build`)
