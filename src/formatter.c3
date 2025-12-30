@@ -402,8 +402,21 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.buf.text("}");
         case "enum_constant":
             self.process_composite(node);
-            self.buf.text(",");
-            self.buf.newline(); // TODO
+
+            TSNode parent = ts::node_parent(node);
+            TSNode last_enum_const;
+            for(uint i = 0; i < ts::node_named_child_count(parent); ++i) {
+                TSNode child = ts::node_named_child(parent, i);
+                if(child.type() == "enum_constant") {
+                    last_enum_const = child;
+                }
+            }
+
+            if(!ts::node_eq(node, last_enum_const) || self.config.force_comma_after_last_enum_constant) {
+                self.buf.text(",");
+            }
+
+            self.buf.newline();
         case "enum_arg":
             self.process_composite(node);
         case "enum_param_list":
@@ -802,7 +815,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         /* ======================================== */
         /* COMMENTS                                 */
         /* ======================================== */
-        case "block_comment": // BUG multiline block
+        case "block_comment":
             self.process_block_comment(node);
             self.buf.newline();
         case "line_comment":
