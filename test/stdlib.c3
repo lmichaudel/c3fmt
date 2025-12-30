@@ -45,6 +45,8 @@ fn Path? convert_path(Path input, Allocator allocator)
 
 fn bool? process_source_file (Path path, bool is_dir, any data) {
     if(!is_dir) {
+        io::printfn("%s", path);
+
         String input = c3fmt::executable::read_file(path.str_view())!!;
         defer input.free(mem);
         String? formatted = c3fmt::format_string(mem, input);
@@ -59,8 +61,8 @@ fn bool? process_source_file (Path path, bool is_dir, any data) {
             std::io::file::save(target_path.str_view(), input)!!;
             return false;
         } else {
-        std::io::path::mkdir(target_path.parent()!!, true)!!;
-        std::io::file::save(target_path.str_view(), formatted)!!;
+            std::io::path::mkdir(target_path.parent()!!, true)!!;
+            std::io::file::save(target_path.str_view(), formatted)!!;
         }
 
         int* ptr = (int*) data;

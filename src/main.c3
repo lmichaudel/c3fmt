@@ -10,18 +10,20 @@ import std::core::mem;
  @param config : "Configuration to be used."
 *>
 fn String? format_string(Allocator allocator, String string, Config config = default_config()) {
-    @pool() {
-        C3Fmt formatter = c3fmt::new(tmem, string, config);
-        formatter.format()!;
+    C3Fmt formatter = c3fmt::new(string, config);
+    defer formatter.free();
 
-        return formatter.output_code.copy_str(allocator);
-    };
+    formatter.format()!;
+
+    return formatter.dstr_buf.copy_str(allocator);
 }
 
 module c3fmt::executable;
 
 import c3fmt;
 import std::io;
+
+import c3fmt::printer;
 
 fn String? read_file(String file_name) {
     File fh = file::open(file_name, "rb")!;
