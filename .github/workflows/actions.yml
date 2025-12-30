@@ -19,7 +19,8 @@ jobs:
           tar -xzf c3.tar.gz
           sudo mv c3/c3c /usr/local/bin/c3c
           sudo chmod +x /usr/local/bin/c3c
-          
+          echo "C3C_LIB=c3/lib" >> $GITHUB_ENV
+
       - name: Run tests
         run: c3c test
 
