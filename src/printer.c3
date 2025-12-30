@@ -243,12 +243,13 @@ fn void TokenBuffer.wrap_point(&self, WrapMode wrap_mode, usz wrap_indent = 1) {
     self.push(token::wrap_point(wrap_mode, wrap_indent));
 }
 
-fn void TokenBuffer.gobble_last_newline(&self) {
+fn bool TokenBuffer.gobble_last_newline(&self) {
     if(self.len() > 0) {
         if(self.last()!!.kind == NEWLINE) {
             self.pop()!!;
-        } else {
-            io::printfn("Last is not a newline.. (%s)", self.last()!!.kind);
+            return true;
         }
     }
+
+    return false;
 }
