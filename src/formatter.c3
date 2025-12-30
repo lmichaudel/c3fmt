@@ -272,6 +272,146 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
 }
 
 <*
+ A special function for compile timecase stmt, acts like a composite
+ before encountering the colon, then switches to a compound-like behaviour.
+
+ @param node : "The processed node"
+*>
+fn void C3Fmt.process_ct_case_stmt(&self, TSNode node) {
+    bool entered_stmt = false;
+    uint colon_id = 0;
+
+    for(uint i = 0; i < ts::node_child_count(node); ++i) {
+        TSNode child = ts::node_child(node, i);
+
+        if(!entered_stmt) {
+            if(i > 0 && child.type() != ":") {
+                self.buf.space();
+            }
+
+            if(child.is_comment()) {
+                assert(child.type() == "block_comment");
+                self.process_block_comment(child);
+            } else {
+                if(ts::node_is_named(child)) {
+                    self.process_node(child);
+                } else {
+                    self.buf.text(child.get_text(self.source_code));
+                }
+            }
+
+            if(child.type() == ":") {
+                entered_stmt = true;
+                colon_id = i;
+                self.buf.newline();
+                if(i == ts::node_child_count(node) - 1) {
+                    return;
+                }
+                self.buf.indent();
+            }
+        } else {
+            int blank_line_amount = 0;
+            if(i > colon_id + 1) {
+                TSNode sibling = ts::node_child(node, i - 1);
+                blank_line_amount = child.start_point_row() - sibling.end_point_row();
+            }
+            blank_line_amount = min(blank_line_amount,
+            self.config.max_blank_line_between_statements + 1);
+
+            for(int j = 0; j < blank_line_amount - 1; ++j) {
+                self.buf.newline();
+            }
+
+            if(child.is_comment() && blank_line_amount == 0 && i > colon_id + 1) {
+                self.buf.gobble_last_newline();
+                self.buf.space();
+            }
+
+            self.process_node(child);
+        }
+    }
+
+    self.buf.dedent();
+}
+
+<*
+ A special function for compile time switch stmt.
+
+ @param node : "The processed node"
+*>
+fn void C3Fmt.process_ct_switch_stmt(&self, TSNode node) {
+    bool entered_stmt = false;
+    uint colon_id = 0;
+
+    for(uint i = 0; i < ts::node_child_count(node); ++i) {
+        TSNode child = ts::node_child(node, i);
+
+        if(!entered_stmt) {
+            if(i > 0 && child.type() != ":") {
+                self.buf.space();
+            }
+
+            if(child.is_comment()) {
+                // TODO
+                //assert(child.type() == "block_comment");
+                //self.process_block_comment(child);
+            } else {
+                if(ts::node_is_named(child)) {
+                    self.process_node(child);
+                } else {
+                    self.buf.text(child.get_text(self.source_code));
+                }
+            }
+
+            if(child.type() == ":") {
+                entered_stmt = true;
+                colon_id = i;
+                self.buf.newline();
+                self.buf.indent();
+            }
+        } else {
+            int blank_line_amount = 0;
+            if(i > colon_id + 1) {
+                TSNode sibling = ts::node_child(node, i - 1);
+                blank_line_amount = child.start_point_row() - sibling.end_point_row();
+            }
+            blank_line_amount = min(blank_line_amount,
+            self.config.max_blank_line_between_statements + 1);
+
+            for(int j = 0; j < blank_line_amount - 1; ++j) {
+                self.buf.newline();
+            }
+
+            if(child.is_comment() && blank_line_amount == 0 && i > colon_id + 1) {
+                TSNode sibling = ts::node_child(node, i - 1);
+                // if the line finished and was a case_stmt
+                // it will look like that in the buf
+                // NEWLINE DEDENT
+                if(sibling.type() == "ct_case_stmt") {
+                    self.buf.pop()!!; // TODO handle the !!
+                    self.buf.gobble_last_newline();
+                    self.buf.space();
+
+                    self.process_node(child);
+
+                    self.buf.dedent();
+                    continue;
+                }
+            }
+
+            if(child.type() == "$endswitch") {
+                assert(i == ts::node_child_count(node) - 1);
+                self.buf.dedent();
+                self.buf.text(child.get_text(self.source_code));
+                self.buf.newline();
+            } else {
+                self.process_node(child);
+            }
+        }
+    }
+}
+
+<*
  Pretty print a block comment.
 
  @param node : "The processed node"
@@ -801,8 +941,13 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_type: { "," },
             );
         case "ct_switch_stmt":
-            self.buf.text(node.get_text(self.source_code)); // TODO, need special handling...
-            self.buf.newline();
+            self.process_ct_switch_stmt(node); // TODO comment after :
+        case "ct_switch_cond":
+            self.buf.text(node.get_text(self.source_code)); // TODO
+        case "ct_case_stmt":
+            self.process_composite(node,
+                skip_space_type: { ":" }
+            ); // TODO this works but performs some unnecessary steps
 
         /* ======================================== */
         /* COMMENTS                                 */

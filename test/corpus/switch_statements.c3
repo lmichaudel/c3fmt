@@ -110,3 +110,32 @@ fn void demo_enum(Height h)
             io::printn("C");
     }
 }
+
+macro @foo($x, #y)
+{
+    $switch $x:
+    $endswitch
+
+    $switch:
+        $case $x > 10:
+            #y += $x * $x;
+        $case $x < 0:
+            #y += $x;
+        $default:
+            #y -= $x;
+    $endswitch
+
+    $switch $x:  // com
+        $case 1:
+        //com
+            #y += $x * $x;
+        $case 2:
+            #y += $x; // com
+
+        // comm
+        $case 3:
+            #y *= $x;
+        $default:
+            #y -= $x;
+    $endswitch
+}
