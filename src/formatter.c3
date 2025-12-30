@@ -60,20 +60,21 @@ fn void C3Fmt.free(&self) {
     self.dstr_buf.free();
 }
 
-faultdef TREE_SITTER_ERROR;
+faultdef TREE_SITTER_PARSER_ERROR;
+faultdef TREE_SITTER_TREE_ERROR;
 faultdef SOURCE_CODE_CONTAINS_ERROR;
 
 fn void? C3Fmt.format(&self) {
     TSParser*? parser = ts::parser::new_with_language(tree_sitter_c3::language());
 	defer (void)ts::parser_delete(parser);
 	if (catch excuse = parser) {
-		return TREE_SITTER_ERROR?;
+		return TREE_SITTER_PARSER_ERROR?;
 	}
 
     TSTree*? tree = ts::parser::parse_string(parser, null, self.source_code);
     defer (void)ts::tree_delete(tree);
     if (catch excuse = tree) {
-		return TREE_SITTER_ERROR?;
+		return TREE_SITTER_TREE_ERROR?;
     }
 
     TSNode root = ts::tree_root_node(tree);
