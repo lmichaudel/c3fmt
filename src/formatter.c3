@@ -1,33 +1,17 @@
-/* TODOLIST:
-
+/* TODO-LIST: */
+/*
 doc_comment
-
-// NOTE: Waiting for #50 in treesitter-c3
-global_declaration
-declaration
-declaration_stmt
-
-switch
 ct_switch
-
-wrapping :
-    go fmt like wrapping
-    ie we have a stream of token (= the line being built) that has some breakpoints (BP)
-    these BP are actually grouped (each BP of a call expr, each BP of a function
-    etc...)
-    if the line is too big we toggle whole BP group one by one until the width is good
-    if there are no BP activeable, we give up...
+wrapping
 */
 
-/* KNOWN BUG
-    - Comment as last line of a case: clause (see l:59 switch_statements_f.c3)
-    - Comment following the colon of a case: clause
-    - I hate case:
+/* KNOWN BUG */
+/*
+- Comment as last line of a case: clause (see l:59 switch_statements_f.c3)
+- Comment following the colon of a case: clause
 */
+
 module c3fmt;
-
-import std::io;
-import std::collections;
 
 import ts;
 import tree_sitter_c3;
@@ -134,19 +118,22 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 }
 
 <*
- Format a "line" composed of several nodes. Append a white space between each node.
+ Format a "line" composed of several nodes.
+ Append a white space between each node.
 
  @param node : "The processed node"
  @param skip_space_type : "Do not append a white space before these type"
  @param skip_space_if_after : "Do not append a white space after these type"
-
+ @param append_newline : "If true, will append a newline"
+ @param wrap_point_before : "Will add a wrap point before the specified tokens"
+ @param wrap_point_after : "Will add a wrap point after the specified tokens"
 *>
 fn void C3Fmt.process_composite(&self, TSNode node,
     String[] skip_space_type = { ";" },
     String[] skip_space_if_after = {},
     bool append_newline = false,
-    String[] wrap_point_after = {},
     String[] wrap_point_before = {},
+    String[] wrap_point_after = {},
 )
 {
     for(uint i = 0; i < ts::node_child_count(node); ++i) {
@@ -200,7 +187,7 @@ fn void C3Fmt.process_composite(&self, TSNode node,
 
 <*
  Rawly format node sequentially, without appending any separator between them.
- Useful for nodes like field accessor ("my_struct.my_field")
+ Useful for nodes like field accessor ("my_struct.my_field").
 
  @param node : "The processed node"
 *>
@@ -221,6 +208,12 @@ fn void C3Fmt.process_sequence(&self, TSNode node) {
     }
 }
 
+<*
+ A special function for case stmt, acts like a composite before encountering
+ the colon, then switches to a compound-like behaviour.
+
+ @param node : "The processed node"
+*>
 fn void C3Fmt.process_case_stmt(&self, TSNode node) {
     bool entered_stmt = false;
     uint colon_id = 0;
@@ -278,12 +271,18 @@ fn void C3Fmt.process_case_stmt(&self, TSNode node) {
     self.buf.dedent();
 }
 
+<*
+ Pretty print a block comment.
+
+ @param node : "The processed node"
+*>
 fn void C3Fmt.process_block_comment(&self, TSNode node) {
     TSNode content = ts::node_named_child(node, 0);
     self.buf.text("/*");
     self.buf.text(content.get_text(self.source_code));
     self.buf.text("*/");
 }
+
 <*
     Process a node of an unknown type
 *>
