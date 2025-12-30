@@ -28,7 +28,7 @@ jobs:
           install-cli: false
 
       - name: Run tests
-        run: c3c test
+        run: c3c test -L $LD_LIBRARY_PATH
 
       - name: Compile formatted standard library
         working-directory: test/stdlib
