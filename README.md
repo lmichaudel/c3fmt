@@ -1,4 +1,11 @@
-# c3fmt
+<h1 align="center">c3fmt</h1>
+
+
+
+<p align="center">
+  <img src="https://github.com/lmichaudel/c3fmt/actions/workflows/actions.yml/badge.svg">
+  <img src="https://img.shields.io/badge/c3-v7.7-blue">
+</p>
 
 A customizable code formatter for the C3 language, written in C3.
 
