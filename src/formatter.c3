@@ -68,6 +68,7 @@ fn void? C3Fmt.format(&self) {
     TSParser*? parser = ts::parser::new_with_language(tree_sitter_c3::language());
 	defer (void)ts::parser_delete(parser);
 	if (catch excuse = parser) {
+        io::eprintfn("excuse: %s", excuse);
 		return TREE_SITTER_PARSER_ERROR?;
 	}
 
