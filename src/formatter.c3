@@ -336,10 +336,22 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "lambda_declaration":
             self.process_composite(node);
         case "macro_declaration":
-            self.process_composite(node);
+            self.process_composite(node,
+                skip_space_type: { "macro_param_list" }
+            );
         case "macro_header":
+            self.process_composite(node,
+                skip_space_type: { "." },
+                skip_space_if_after: { "." },
+            );
         case "macro_param_list":
-            self.buf.text(node.get_text(self.source_code)); //TODO
+            self.process_composite(node,
+                skip_space_type: { ")", ",", ";" },
+                skip_space_if_after: { "(" },
+                wrap_point_before: { "param", "trailing_block_param", ")" },
+            );
+        case "trailing_block_param":
+            self.process_sequence(node);
         case "macro_func_body":
             TSNode child = ts::node_child(node, 0);
             switch(child.type()) {
