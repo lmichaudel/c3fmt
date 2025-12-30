@@ -19,7 +19,8 @@ jobs:
           tar -xzf c3.tar.gz
           sudo mv c3/c3c /usr/local/bin/c3c
           sudo chmod +x /usr/local/bin/c3c
-          echo "C3C_LIB=c3/lib" >> $GITHUB_ENV
+          sudo cp -r c3 /usr/local/c3
+          echo "C3C_LIB=/usr/local/c3/lib" >> $GITHUB_ENV
 
       - name: Install tree-sitter
         uses: tree-sitter/setup-action@v1
