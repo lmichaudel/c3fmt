@@ -5,6 +5,7 @@
 <p align="center">
   <img src="https://github.com/lmichaudel/c3fmt/actions/workflows/actions.yml/badge.svg">
   <img src="https://img.shields.io/badge/c3-v7.7-blue">
+  <img src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
 A customizable code formatter for the C3 language, written in C3.
