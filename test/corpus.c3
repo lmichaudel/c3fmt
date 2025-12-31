@@ -4,7 +4,7 @@ import std::io;
 macro test($name, $input_path, $solution_path) {
     String input = c3fmt::executable::read_file($input_path)!!;
     String solution = c3fmt::executable::read_file($solution_path)!!;
-    String formatted = c3fmt::format_string(mem, input)!!;
+    String formatted = c3fmt::format_string(mem, input, check_semantic: true)!!;
 
     int len = solution.len;
     if(formatted.len != len) {

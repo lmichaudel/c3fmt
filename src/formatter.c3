@@ -45,8 +45,9 @@ fn void C3Fmt.free(&self) {
 }
 
 faultdef SOURCE_CODE_CONTAINS_ERROR;
+faultdef C3FMT_CHANGED_CODE_SEMANTIC;
 
-fn void? C3Fmt.format(&self) {
+fn void? C3Fmt.format(&self, bool check = false) {
     TSParser* parser = ts::parser::new_with_language(tree_sitter_c3::language())!;
 	defer ts::parser_delete(parser);
 
@@ -54,7 +55,6 @@ fn void? C3Fmt.format(&self) {
     defer ts::tree_delete(tree);
 
     TSNode root = ts::tree_root_node(tree);
-
     if(ts::node_has_error(root)) {
         return SOURCE_CODE_CONTAINS_ERROR?;
     }
@@ -63,6 +63,17 @@ fn void? C3Fmt.format(&self) {
     self.buf.eof();
 
     self.print();
+
+    if(check) {
+        TSTree* f_tree = ts::parser::parse_string(parser, null, self.dstr_buf.str_view());
+        defer ts::tree_delete(f_tree);
+
+        TSNode f_root = ts::tree_root_node(f_tree);
+
+        if(!ts::same_semantic(root, f_root)) {
+            return C3FMT_CHANGED_CODE_SEMANTIC?;
+        }
+    }
 }
 
 module c3fmt @private;

@@ -45,7 +45,7 @@ enum Height : uint
 {
     LOW,
     MEDIUM,
-    HIGH,
+    HIGH
 }
 
 fn void demo_enum(Height h)

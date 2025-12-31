@@ -49,7 +49,7 @@ fn bool? process_source_file (Path path, bool is_dir, any data) {
 
         String input = c3fmt::executable::read_file(path.str_view())!!;
         defer input.free(mem);
-        String? formatted = c3fmt::format_string(mem, input);
+        String? formatted = c3fmt::format_string(mem, input, check_semantic: true);
         defer (void)formatted.free(mem);
 
         Path target_path = convert_path(path, mem)!!;
