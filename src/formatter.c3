@@ -45,7 +45,7 @@ fn void C3Fmt.free(&self) {
 }
 
 faultdef SOURCE_CODE_CONTAINS_ERROR;
-faultdef C3FMT_CHANGED_CODE_SEMANTIC;
+faultdef CODE_SEMANTIC_MISMATCH;
 
 fn void? C3Fmt.format(&self, bool check = false) {
     TSParser* parser = ts::parser::new_with_language(tree_sitter_c3::language())!;
@@ -71,7 +71,7 @@ fn void? C3Fmt.format(&self, bool check = false) {
         TSNode f_root = ts::tree_root_node(f_tree);
 
         if(!ts::same_semantic(root, f_root)) {
-            return C3FMT_CHANGED_CODE_SEMANTIC?;
+            return CODE_SEMANTIC_MISMATCH?;
         }
     }
 }
