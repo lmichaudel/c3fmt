@@ -46,7 +46,7 @@ jobs:
 
       - name: Build c3fmt
         if: runner.os == 'macOS' || runner.os == 'Linux'
-        run: ./c3/c3c build -L $LD_LIBRARY_PATH
+        run: ./c3/c3c build -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
 
       - name: Build c3fmt
         if: runner.os == 'Windows'
