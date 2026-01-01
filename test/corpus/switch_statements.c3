@@ -127,7 +127,7 @@ macro @foo($x, #y)
 
     $switch $x:  // com
         $case 1:
-        //com
+// TODO
             #y += $x * $x;
         $case 2:
             #y += $x; // com

@@ -161,6 +161,12 @@ fn void C3Fmt.process_composite(&self, TSNode node,
         )
         {
             self.buf.space();
+            // TODO find a way to correctly handle // & wrapping
+            // idea: add a COMMENT token, but no NEWLINE
+            // if there is COMMENT followed by WRAPPOINT, take the wrap point !
+            // if(self.buf[self.buf.len() - 1].kind != token::TokenKind.NEWLINE) {
+            //     self.buf.space();
+            // }
         }
 
         if(add_wrap_point_fn) {
@@ -179,12 +185,22 @@ fn void C3Fmt.process_composite(&self, TSNode node,
                 // if (aazeae) // THE COMMENT
                 // { ... }
                 // this force Allman brace style, it's very bad
-                self.buf.text("/*");
-                self.buf.space();
-                String comment_content = child.get_text(self.source_code).strip("//").trim();
-                self.buf.text(comment_content);
-                self.buf.space();
-                self.buf.text("*/");
+                // TODO: instead, let's force allman style
+                // + it doesnt change syntax tree AT ALL (which could be a goal)
+                // + allow the user to specify wrap point himself !
+                // - forces allman
+                if(i == ts::node_child_count(node) - 1) {
+                    io::eprintfn("Found an inline comment as last child?");
+                }
+                self.buf.inline_comment(child.get_text(self.source_code));
+                // self.buf.text(child.get_text(self.source_code));
+                // if(append_newline) {
+                //     if(i != ts::node_child_count(node) - 1) {
+                //         self.buf.newline();
+                //     }
+                // } else {
+                //     self.buf.newline();
+                // }
             }
         } else {
             if(ts::node_is_named(child)) {
@@ -469,15 +485,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_if_after: { "." },
             );
         case "func_param_list":
+            self.buf.begin_wrap_group();
             self.process_composite(node,
                 skip_space_type: { ")", "," },
                 skip_space_if_after: { "(" },
                 add_wrap_point_fn: fn (String type) {
                     switch (type) {
                         case "param":
-                            return { .mode = BEFORE, .indent = 1};
+                            return { .mode = IMPLIED, .indent = 1};
                         case ")":
-                            return { .mode = BEFORE, .indent = 0};
+                            return { .mode = SUPER_IMPLIED, .indent = 0};
                         default:
                             return NO_WRAP?;
                     }
@@ -501,15 +518,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_if_after: { "." },
             );
         case "macro_param_list":
+            self.buf.begin_wrap_group();
             self.process_composite(node,
                 skip_space_type: { ")", ",", ";" },
                 skip_space_if_after: { "(" },
                 add_wrap_point_fn: fn (String type) {
                     switch (type) {
                         case "param":
-                            return { .mode = BEFORE, .indent = 1};
+                            return { .mode = IMPLIED, .indent = 1};
                         case ")":
-                            return { .mode = BEFORE, .indent = 0};
+                            return { .mode = SUPER_IMPLIED, .indent = 0};
                         default:
                             return NO_WRAP?;
                     }
@@ -738,15 +756,16 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 skip_space_type: { "call_arg_list" }
             );
         case "call_arg_list":
+            self.buf.begin_wrap_group();
             self.process_composite(node,
                 skip_space_type: { ")", "," },
                 skip_space_if_after: { "(" },
                 add_wrap_point_fn: fn (String type) {
                     switch(type) {
                         case ")":
-                            return { .mode = BEFORE, .indent = 0};
+                            return { .mode = SUPER_IMPLIED, .indent = 0};
                         case "call_arg":
-                            return { .mode = BEFORE, .indent = 1};
+                            return { .mode = IMPLIED, .indent = 1};
                         default:
                             return NO_WRAP?;
                     }
@@ -940,7 +959,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
             self.buf.text("}");
         case "case_stmt":
             self.process_case_stmt(node);
-        case "default_stmt": // idem
+        case "default_stmt":
             self.process_case_stmt(node);
         case "case_range":
             self.process_sequence(node);
@@ -964,6 +983,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                 append_newline: true
             );
         case "ct_stmt_body":
+            // TODO should be not responsible for the newline
             self.buf.newline();
             self.buf.indent();
             self.process_compound(node);
@@ -1000,6 +1020,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
         case "ct_switch_cond":
             self.buf.text(node.get_text(self.source_code)); // TODO
         case "ct_case_stmt":
+            //self.process_ct_case_stmt(node);
             self.process_composite(node,
                 skip_space_type: { ":" }
             ); // TODO this works but performs some unnecessary steps
