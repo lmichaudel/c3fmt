@@ -1,4 +1,8 @@
-<h1 align="center">c3fmt</h1>
+<p align="center">
+  <img src=".github/c3fmt_logo.png" alt="logo banner" width="70%">
+</p>
+
+#
 
 <p align="center">
   <img src="https://github.com/lmichaudel/c3fmt/actions/workflows/actions.yml/badge.svg">
