@@ -83,7 +83,7 @@ fn int main(String[] args)
         return 0;
     }
 
-    Config config;
+    Config config = c3fmt::default_config();
     if(cli_options.config != "") {
         Config? parsed = c3fmt::parse_from_file(cli_options.config);
 
