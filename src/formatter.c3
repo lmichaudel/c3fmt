@@ -940,7 +940,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false) {
                                 parent.type() != "else_part"
             );
         case "else_part":
-            if(self.config.else_on_new_line) {
+            if(self.config.else_on_newline) {
                 self.buf.newline();
             }
             self.process_composite(node);

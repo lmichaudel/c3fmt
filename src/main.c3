@@ -36,6 +36,8 @@ struct CLIOptions {
     bool in_place;
     bool stdout;
     bool stdin;
+    String config;
+    bool force_default_config;
 }
 CLIOptions cli_options;
 
@@ -48,7 +50,9 @@ fn int main(String[] args)
         "v",  "version",  &version_asked,
         null, "in-place", &cli_options.in_place,
         null, "stdin",    &cli_options.stdin,
-        null, "stdout",   &cli_options.stdout
+        null, "stdout",   &cli_options.stdout,
+        null, "config?",  &cli_options.config,
+        null, "default",  &cli_options.force_default_config
     );
 
     if (catch err = arg_last_parsed) {
@@ -65,6 +69,8 @@ fn int main(String[] args)
                 io::printfn("\t--in-place       - Format files in place.");
                 io::printfn("\t--stdin          - Read input from stdin.");
                 io::printfn("\t--stdout         - Output result to stdout.");
+                io::printfn("\t--config=<path>  - Specify a config file.");
+                io::printfn("\t--default        - Force default config.");
                 return 1;
             default:
                 return 1;
@@ -75,6 +81,31 @@ fn int main(String[] args)
         io::printfn("c3fmt version:     \t0.1.0");
         io::printfn("target c3c version:\t0.7.8");
         return 0;
+    }
+
+    Config config;
+    if(cli_options.config != "") {
+        Config? parsed = c3fmt::parse_from_file(cli_options.config);
+
+        if(try parsed) {
+            config = parsed;
+        } else {
+            io::eprintfn("Can't find config file %s.", cli_options.config);
+            return 1;
+        }
+    } else if (file::exists("./.c3fmt")) {
+        Config? parsed = c3fmt::parse_from_file("./.c3fmt");
+
+        if(try parsed) {
+            config = parsed;
+        } else {
+            io::eprintfn("Can't parse .c3fmt configuration file.", cli_options.config);
+            return 1;
+        }
+    }
+
+    if(cli_options.force_default_config) {
+        config = c3fmt::default_config();
     }
 
     if(cli_options.stdin) {
@@ -93,11 +124,10 @@ fn int main(String[] args)
             read.append((String)buffer[:s]);
         }
 
-        String? formatted = c3fmt::format_string(mem, read.str_view());
+        String? formatted = c3fmt::format_string(mem, read.str_view(), config);
         defer (void)formatted.free(mem);
         if (catch excuse = formatted) {
-            io::eprintfn("Error: could not format source code.");
-            io::eprintfn("Excuse: %s.", excuse);
+            io::eprintfn("Error: could not format source code: %s.", excuse);
             return 1;
         }
 
@@ -106,7 +136,7 @@ fn int main(String[] args)
     }
 
     if(arg_last_parsed == args.len) {
-        io::printfn("No input file provided.");
+        io::eprintfn("No input file provided.");
         return 1;
     }
 
@@ -118,16 +148,14 @@ fn int main(String[] args)
         String? content = read_file(args[i]);
         defer (void)content.free(mem);
         if (catch excuse = content) {
-            io::eprintfn("Error: could not read file %s.", args[1]);
-            io::eprintfn("Excuse: %s.", excuse);
+            io::eprintfn("Error: could not read file %s: %s", args[i], excuse);
             return 1;
         }
 
-        String? formatted = c3fmt::format_string(mem, content);
+        String? formatted = c3fmt::format_string(mem, content, config);
         defer (void)formatted.free(mem);
         if (catch excuse = formatted) {
-            io::eprintfn("Error: could not format source code.");
-            io::eprintfn("Excuse: %s.", excuse);
+            io::eprintfn("Error: could not format file %s: %s.", args[i], excuse);
             return 1;
         }
 

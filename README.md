@@ -21,7 +21,16 @@ Options:
 --in-place       - Format files in place.
 --stdin          - Read input from stdin.
 --stdout         - Output result to stdout.
+--config=<path>  - Specify a config file.
+--default        - Force default config.
 ```
+
+## Configuration
+
+`c3fmt` will try to find a `.c3fmt` format inside the working directory. You can also
+pass your own path to `c3fmt`, or force the default configuration.
+
+You can look at [.c3fmt](.c3fmt) for the default configuration.
 ## Building
 
 Run `c3c build` to build `c3fmt`.
