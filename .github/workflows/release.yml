@@ -46,11 +46,11 @@ jobs:
 
       - name: Build c3fmt
         if: runner.os == 'macOS' || runner.os == 'Linux'
-        run: ./c3/c3c build
+        run: ./c3/c3c build -L $LD_LIBRARY_PATH
 
       - name: Build c3fmt
         if: runner.os == 'Windows'
-        run: ./c3/c3c.exe build
+        run: ./c3/c3c.exe build -L $LD_LIBRARY_PATH
 
       - name: Upload artefact
         if: runner.os == 'Linux'
