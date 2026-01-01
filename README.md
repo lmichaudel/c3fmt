@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/c3fmt_logo.png" alt="logo banner" width="70%">
+  <img src=".github/c3fmt_logo.png" alt="logo banner" width="40%">
 </p>
 
 #
