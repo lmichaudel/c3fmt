@@ -39,7 +39,7 @@ jobs:
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
       - name: Install tree-sitter
-        uses: tree-sitter/setup-action@v1
+        uses: tree-sitter/setup-action@v2
         with:
           install-lib: true
           install-cli: false
@@ -50,8 +50,8 @@ jobs:
 
       - name: Build c3fmt
         if: runner.os == 'Windows'
-        shell: sh
-        run: ./c3/c3c.exe build -L $LD_LIBRARY_PATH
+        shell: bash
+        run: ./c3/c3c.exe build -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
 
       - name: Upload artefact
         if: runner.os == 'Linux'
