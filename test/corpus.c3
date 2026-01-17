@@ -58,3 +58,9 @@ fn void wrapping() @test {
     conf.max_line_length = 80;
     test("wrapping", "test/corpus/wrapping.c3", "test/corpus/wrapping_f.c3", conf);
 }
+
+fn void comments() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    test("comments", "test/corpus/comments.c3", "test/corpus/comments_f.c3", conf);
+}

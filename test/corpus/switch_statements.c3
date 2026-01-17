@@ -10,8 +10,9 @@ fn void main () {
                 case 2:
                     doSomethingElse();
                 case 3:
-                    nextcase rand(); // Jump to random case
-                default:
+					// body
+                    nextcase rand(); //  Jump to random case
+                default: // trail
                     io::printn("Ended");
                     nextcase MAIN: BAR;  // Jump to outer (MAIN) switch
             }
@@ -128,9 +129,10 @@ macro @foo($x, #y)
     $switch $x:  // com
         $case 1:
 // TODO
-            #y += $x * $x;
+            #y += $x * $x; // trail
         $case 2:
             #y += $x; // com
+			// comm
 
         // comm
         $case 3:

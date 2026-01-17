@@ -11,8 +11,9 @@ fn void main()
 				case 2:
 					doSomethingElse();
 				case 3:
+					// body
 					nextcase rand(); // Jump to random case
-				default:
+				default: // trail
 					io::printn("Ended");
 					nextcase MAIN: BAR; // Jump to outer (MAIN) switch
 			}
@@ -56,7 +57,7 @@ fn void demo_enum(Height h)
 		case LOW:
 		case MEDIUM:
 			io::printn("Not high");
-		// Implicit break.
+			// Implicit break.
 		case HIGH:
 			io::printn("High");
 	}
@@ -67,7 +68,7 @@ fn void demo_enum(Height h)
 		case LOW:
 		case MEDIUM:
 			io::printn("Not high");
-		// Implicit break.
+			// Implicit break.
 		case Height.HIGH:
 			io::printn("High");
 	}
@@ -90,8 +91,7 @@ fn void demo_enum(Height h)
 		case MEDIUM:
 		case HIGH:
 			break;
-		default:
-			// warning: default label in switch which covers all enumeration value
+		default: // warning: default label in switch which covers all enumeration value
 			break;
 	}
 
@@ -127,13 +127,13 @@ macro @foo($x, #y)
 			#y -= $x;
 	$endswitch
 
-	$switch $x:
-		// com
-		$case 1: // TODO
-
-			#y += $x * $x;
+	$switch $x: // com
+		$case 1:
+			// TODO
+			#y += $x * $x; // trail
 		$case 2:
 			#y += $x; // com
+			// comm
 
 		// comm
 		$case 3:

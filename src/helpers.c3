@@ -52,6 +52,10 @@ fn bool TSNode.is_comment(self) {
     return node_type == "line_comment" || node_type == "block_comment";
 }
 
+fn bool same_line(TSNode a, TSNode b) {
+	return a.end_point_row() == b.start_point_row();
+}
+
 fn bool String[].contains(&self, String str) {
     foreach(String token : self) {
         if(token == str) {

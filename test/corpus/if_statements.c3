@@ -25,4 +25,12 @@ fn void main () {
     else {
         
     }
+
+	$if $x > 3: // comment
+		main();
+		// com
+	$else // trail
+		// comm1
+		#y += $x; // comm2
+	$endif // aa
 }

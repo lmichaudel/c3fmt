@@ -89,8 +89,9 @@ fn usz Token.len(&self) {
         case SPACE:
             return 1;
         case TEXT:
+			return self.str.len ;
         case INLINE_COMMENT:
-            return self.str.len;
+            return self.str.len + 3;
     }
 }
 
@@ -104,13 +105,14 @@ fn String Token.print(&self) {
         case SPACE:
             return " ";
         case TEXT:
+			return self.str;
         case INLINE_COMMENT:
             return self.str;
         case BEGIN_WRAP_GROUP:
             unreachable();
         case INDENT:
-            unreachable();
-        case DEDENT:
+			unreachable();
+		case DEDENT:
             unreachable();
     }
 }
@@ -197,6 +199,30 @@ fn void C3Fmt.print_indent(&self) {
 }
 
 fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level) {
+	// foreach(tok : tokens) {
+	// 	switch(tok.kind) {
+	// 		case WRAP_POINT:
+	// 			io::printf("WP ");
+	// 		case EOF:
+	// 			io::printf("EOF");
+	// 		case NEWLINE:
+	// 			io::printf("NL ");
+	// 		case SPACE:
+	// 			io::printf("");
+	// 		case TEXT:
+	// 			io::printf("%s ", tok.str);
+	// 		case INLINE_COMMENT:
+	// 			io::printf("IC ");
+	// 		case BEGIN_WRAP_GROUP:
+	// 			io::printf("BWP ");
+	// 		case INDENT:
+	// 			io::printf("> ");
+	// 		case DEDENT:
+	// 			io::printf("< ");
+	// 	}
+	// }
+	// io::printf("\n");
+
     if(tokens.len == 1 && tokens[0].kind == NEWLINE) {
         self.dstr_buf.append('\n');
         return;
@@ -237,6 +263,10 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level) {
             // int a = 10 // i'm a psycho
             // ;
             if(token.kind == INLINE_COMMENT) {
+				self.dstr_buf.append("//");
+				if(token.str != "") {
+					self.dstr_buf.append(" ");
+				}
                 self.dstr_buf.append(token.print());
                 self.dstr_buf.append('\n');
                 force_take_wrap_point = true;
@@ -305,7 +335,13 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level) {
                         wrap_point_needed = new_line_length > self.config.max_line_length;
                     }
                 } else {
-                    self.dstr_buf.append(token.print());
+					if(token.kind == INLINE_COMMENT) {
+						self.dstr_buf.append("//");
+						if(token.str != "") {
+							self.dstr_buf.append(" ");
+						}
+					}
+					self.dstr_buf.append(token.print());
                 }
             }
         }
@@ -352,7 +388,9 @@ fn bool TokenBuffer.gobble_last_newline(&self) {
         if(self.last()!!.kind == NEWLINE) {
             self.pop()!!;
             return true;
-        }
+        } else {
+			io::printfn("%s", self.last()!!.kind);
+		}
     }
 
     return false;
