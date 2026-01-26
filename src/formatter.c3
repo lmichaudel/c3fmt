@@ -689,7 +689,7 @@ fn String C3Fmt.extract_comment_string(&self, TSNode comment)
 	if (comment.type() == "line_comment")
 	{
 		String text = comment.get_text(self.source_code);
-		text = text.strip("//");
+		text = text[2..]; // trim // or #!
 		return text.trim();
 	}
 	else if (comment.type() == "block_comment")
@@ -738,7 +738,8 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
 fn void C3Fmt.process_line_comment(&self, TSNode node)
 {
 	TSNode content = ts::node_named_child(node, 0);
-	self.buf.text("//");
+
+	self.buf.text(node.get_text(self.source_code)[0:2]);
 	self.buf.space();
 	self.buf.text(self.extract_comment_string(node));
 }
@@ -789,6 +790,9 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		/* ======================================== */
 		case "source_file":
 			self.process_compound(node);
+		case "hashbang_line":
+			self.process_comment(node);
+			self.buf.newline();
 
 		/* ======================================== */
 		/* FUNCTIONS, MACROS & LAMBDAS */

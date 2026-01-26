@@ -183,15 +183,6 @@ fn void C3Fmt.print(&self)
 {
 	self.trim();
 
-	foreach(tok : self.buf) {
-		if(tok.kind == TEXT) {
-			io::printf("%s(%s) ", tok.kind, tok.str);
-		} else {
-			io::printf("%s ", tok.kind);
-		}
-
-	}
-
 	usz token_count = self.buf.len();
 	if (token_count == 0)
 	{
