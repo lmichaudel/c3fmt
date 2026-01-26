@@ -999,6 +999,8 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_sequence(node);
 		case "type":
 			self.process_sequence(node);
+		case "type_suffix":
+			self.process_composite(node, skip_space_type: {"[<", ">]"}, skip_space_if_after: { "[<" });
 		case "identifier_list":
 			self.process_composite(node, skip_space_type: { "," });
 		case "attribute_list":
@@ -1236,7 +1238,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "const_ident":
 		case "ct_const_ident":
 		case "type_ident":
-		case "type_suffix":
 		case "base_type_name":
 		case "ct_type_ident":
 		case "at_type_ident":
