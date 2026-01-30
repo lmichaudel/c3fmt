@@ -39,13 +39,6 @@ module opt;
 import libc;
 import std::io, std::math;
 
-// TODO: Move this into C3 stdlib's "ascii" core.
-const AsciiCharset ALPHA_UPPER_SET = ascii::@create_set("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-const AsciiCharset ALPHA_LOWER_SET = ascii::@create_set("abcdefghijklmnopqrstuvwxyz");
-const AsciiCharset ALPHA_SET = (AsciiCharset)((uint128)ALPHA_UPPER_SET | (uint128)ALPHA_LOWER_SET);
-const AsciiCharset ALPHANUMERIC_SET = (AsciiCharset)((uint128)ALPHA_SET | (uint128)ascii::NUMBER_SET);
-
-
 const BAD_CHAR = '?';
 const BAD_ARG = ':';
 
