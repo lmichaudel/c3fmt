@@ -20,13 +20,13 @@
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
-module std::collections::priorityqueue{Type};
+module std::collections::priorityqueue<Type>;
 import std::collections::priorityqueue::private;
 
 typedef PriorityQueue = inline PrivatePriorityQueue{Type, false};
 typedef PriorityQueueMax = inline PrivatePriorityQueue{Type, true};
 
-module std::collections::priorityqueue::private{Type, MAX};
+module std::collections::priorityqueue::private<Type, MAX>;
 import std::collections::list, std::io;
 
 struct PrivatePriorityQueue (Printable)
@@ -86,7 +86,7 @@ fn Type? PrivatePriorityQueue.pop(&self)
 {
 	usz i = 0;
 	usz len = self.heap.len();
-	if (!len) return NO_MORE_ELEMENT?;
+	if (!len) return NO_MORE_ELEMENT~;
 	usz new_count = len - 1;
 	self.heap.swap(0, new_count);
 	while OUTER: ((2 * i + 1) < new_count)

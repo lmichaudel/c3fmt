@@ -1,7 +1,7 @@
 <*
  @require $defined((Value){}.hash()) : `No .hash function found on the value`
 *>
-module std::collections::set {Value};
+module std::collections::set <Value>;
 import std::math;
 import std::io @norecurse;
 
@@ -634,7 +634,7 @@ fn Value? HashSetIterator.next(&self)
 		}
 	}
 
-	return NOT_FOUND?;
+	return NOT_FOUND~;
 }
 
 fn usz HashSetIterator.len(&self) @operator(len)
