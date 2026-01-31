@@ -50,7 +50,7 @@ fn bool? String.to_bool(self)
 		return false;
 	}
 
-	return INVALID_CONFIG?;
+	return INVALID_CONFIG~;
 }
 
 fn Config? parse_from_file(String file_path) => @pool()
@@ -76,7 +76,7 @@ fn Config? parse_from_file(String file_path) => @pool()
 		{
 			io::eprintfn("Invalid line :");
 			io::eprintfn("%s", raw_line);
-			return INVALID_CONFIG?;
+			return INVALID_CONFIG~;
 		}
 
 		String key = vals[0].trim();
@@ -107,13 +107,13 @@ fn Config? parse_from_file(String file_path) => @pool()
 				}
 				else
 				{
-					return INVALID_CONFIG?;
+					return INVALID_CONFIG~;
 				}
 			case "else_on_newline":
 				conf.else_on_newline = val.to_bool()!;
 
 			default:
-				return INVALID_CONFIG?;
+				return INVALID_CONFIG~;
 		}
 	}
 

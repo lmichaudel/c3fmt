@@ -50,7 +50,7 @@ fn void? C3Fmt.format(&self, bool check = false)
 	TSNode root = ts::tree_root_node(tree);
 	if (ts::node_has_error(root))
 	{
-		return SOURCE_CODE_CONTAINS_ERROR?;
+		return SOURCE_CODE_CONTAINS_ERROR~;
 	}
 
 	self.process_node(root);
@@ -67,7 +67,7 @@ fn void? C3Fmt.format(&self, bool check = false)
 
 		if (!ts::same_semantic(root, f_root))
 		{
-			return CODE_SEMANTIC_MISMATCH?;
+			return CODE_SEMANTIC_MISMATCH~;
 		}
 	}
 }
@@ -814,7 +814,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 					case ")":
 						return { .mode = SUPER_IMPLIED, .indent = 0 };
 					default:
-						return NO_WRAP?;
+						return NO_WRAP~;
 				}
 			});
 		case "param":
@@ -838,7 +838,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 					case ")":
 						return { .mode = SUPER_IMPLIED, .indent = 0 };
 					default:
-						return NO_WRAP?;
+						return NO_WRAP~;
 				}
 			});
 		case "trailing_block_param":
@@ -1032,7 +1032,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 					case "call_arg":
 						return { .mode = IMPLIED, .indent = 1 };
 					default:
-						return NO_WRAP?;
+						return NO_WRAP~;
 				}
 			});
 		case "call_args":

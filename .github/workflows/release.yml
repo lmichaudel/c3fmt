@@ -18,24 +18,24 @@ jobs:
       - name: Download c3c
         if: runner.os == 'Linux'
         run: |
-          curl -L -o c3.tar.gz https://github.com/c3lang/c3c/releases/download/v0.7.8/c3-linux.tar.gz
+          curl -L -o c3.tar.gz https://github.com/c3lang/c3c/releases/download/v0.7.9/c3-linux.tar.gz
           tar xzf c3.tar.gz
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
       - name: Download c3c
         if: runner.os == 'macOS'
         run: |
-          curl -L -o c3.tar.gz https://github.com/c3lang/c3c/releases/download/v0.7.8/c3-macos.zip
+          curl -L -o c3.tar.gz https://github.com/c3lang/c3c/releases/download/v0.7.9/c3-macos.zip
           tar xzf c3.tar.gz
-          cp -r macos c3
+          # cp -r macos c3
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
       - name: Download c3c
         if: runner.os == 'Windows'
         run: |
-          curl -L -o c3.zip https://github.com/c3lang/c3c/releases/download/v0.7.8/c3-windows.zip
+          curl -L -o c3.zip https://github.com/c3lang/c3c/releases/download/v0.7.9/c3-windows.zip
           unzip c3.zip
-          cp -r c3-windows-Release c3
+          # cp -r c3-windows-Release c3
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
       - name: Install tree-sitter
@@ -43,7 +43,7 @@ jobs:
         with:
           install-lib: true
           install-cli: false
-
+          
       - name: Build c3fmt
         if: runner.os == 'macOS' || runner.os == 'Linux'
         run: ./c3/c3c build -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"

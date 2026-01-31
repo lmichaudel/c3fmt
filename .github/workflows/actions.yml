@@ -15,7 +15,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y curl tar
-          curl -L https://github.com/c3lang/c3c/releases/download/v0.7.8/c3-linux.tar.gz -o c3.tar.gz
+          curl -L https://github.com/c3lang/c3c/releases/download/v0.7.9/c3-linux.tar.gz -o c3.tar.gz
           tar -xzf c3.tar.gz
           sudo mv c3/c3c /usr/local/bin/c3c
           sudo chmod +x /usr/local/bin/c3c

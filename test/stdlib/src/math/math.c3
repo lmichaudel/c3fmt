@@ -997,11 +997,29 @@ macro bool is_power_of_2(x)
 	return x != 0 && (x & (x - 1)) == 0;
 }
 
+<*
+ Returns the next power of two that is greater than or equal to x.
+
+ @require types::is_int($typeof(x)) : "Input must be an integer type"
+ @require x >= 0 : "Input must be non-negative"
+*>
 macro next_power_of_2(x)
 {
-	$typeof(x) y = 1;
-	while (y < x) y += y;
-	return y;
+	if (x <= 1) return 1;
+	if (x == 2) return 2;
+
+	$typeof(x) v = x - 1;
+
+	v |= v >> 1;
+	v |= v >> 2;
+	v |= v >> 4;
+
+	$if ($sizeof(x) >= 2):  v |= v >> 8;  $endif;
+	$if ($sizeof(x) >= 4):  v |= v >> 16; $endif;
+	$if ($sizeof(x) >= 8):  v |= v >> 32; $endif;
+	$if ($sizeof(x) >= 16): v |= v >> 64; $endif;
+
+	return v + 1;
 }
 
 macro equals_vec(v1, v2) @private
@@ -1119,21 +1137,21 @@ fn float _frexpf(float x, int* e)
 macro overflow_add_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_add(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_add(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_sub_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_sub(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_sub(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 
 macro overflow_mul_helper(x, y) @local
 {
 	$typeof(x) res @noinit;
-	if ($$overflow_mul(x, y, &res)) return OVERFLOW?;
+	if ($$overflow_mul(x, y, &res)) return OVERFLOW~;
 	return res;
 }
 

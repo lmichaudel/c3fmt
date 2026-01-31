@@ -15,7 +15,7 @@ fn Path? convert_path(Path input, Allocator allocator)
 
     // 2. Must be under cwd
     if (!in_str.starts_with(cwd_str)) {
-        return INVALID_PATH?;
+        return INVALID_PATH~;
     }
 
     // 3. Make path relative to cwd
@@ -28,7 +28,7 @@ fn Path? convert_path(Path input, Allocator allocator)
 
     // 4. Must be under test/stdlib/src
     if (!rel.starts_with(ROOT)) {
-        return INVALID_PATH?;
+        return INVALID_PATH~;
     }
 
     // 5. Strip test/stdlib/src
