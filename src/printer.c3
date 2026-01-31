@@ -10,6 +10,7 @@ enum TokenKind
 	TEXT,
 	BEGIN_WRAP_GROUP,
 	WRAP_POINT,
+	END_WRAP_GROUP,
 	INLINE_COMMENT,
 }
 
@@ -83,6 +84,11 @@ fn Token wrap_point(WrapPoint wrap_point)
 	return (Token) { .kind = WRAP_POINT, .wrap_point = wrap_point };
 }
 
+fn Token end_wrap_group()
+{
+	return (Token) { .kind = END_WRAP_GROUP };
+}
+
 fn bool Token.is(&self, TokenKind kind)
 {
 	return self.kind == kind;
@@ -98,6 +104,7 @@ fn usz Token.len(&self)
 		case DEDENT:
 		case BEGIN_WRAP_GROUP:
 		case WRAP_POINT:
+		case END_WRAP_GROUP:
 			return 0;
 		case SPACE:
 			return 1;
@@ -124,6 +131,8 @@ fn String Token.print(&self)
 		case INLINE_COMMENT:
 			return self.str;
 		case BEGIN_WRAP_GROUP:
+			unreachable();
+		case END_WRAP_GROUP:
 			unreachable();
 		case INDENT:
 			unreachable();
@@ -427,6 +436,11 @@ fn void TokenBuffer.begin_wrap_group(&self)
 fn void TokenBuffer.wrap_point(&self, WrapPoint wrap_point)
 {
 	self.push(token::wrap_point(wrap_point));
+}
+
+fn void TokenBuffer.end_wrap_group(&self)
+{
+	self.push(token::end_wrap_group());
 }
 
 fn bool TokenBuffer.gobble_last_newline(&self)

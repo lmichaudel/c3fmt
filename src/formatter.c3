@@ -817,6 +817,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 						return NO_WRAP?;
 				}
 			});
+			self.buf.end_wrap_group();
 		case "param":
 			self.process_composite(node, skip_space_if_after: { "&" },);
 		case "param_default":
@@ -841,6 +842,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 						return NO_WRAP?;
 				}
 			});
+			self.buf.end_wrap_group();
 		case "trailing_block_param":
 			self.process_sequence(node);
 		case "macro_func_body":
@@ -1035,6 +1037,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 						return NO_WRAP?;
 				}
 			});
+			self.buf.end_wrap_group();
 		case "call_args":
 			self.process_composite(node);
 		case "call_arg":
