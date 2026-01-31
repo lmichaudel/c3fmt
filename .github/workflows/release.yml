@@ -30,6 +30,16 @@ jobs:
           # cp -r macos c3
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
+      - name: Ensure LLVM / lld available (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install llvm || true
+          # Some c3c builds expect /opt/homebrew/opt/lld; point it to the llvm keg.
+          if [ ! -d /opt/homebrew/opt/lld ]; then
+            sudo ln -s /opt/homebrew/opt/llvm /opt/homebrew/opt/lld || true
+          fi
+
       - name: Download c3c
         if: runner.os == 'Windows'
         run: |
