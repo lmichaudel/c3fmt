@@ -124,7 +124,8 @@ const usz MAX_VECTOR_SIZE = $$MAX_VECTOR_SIZE;
 const bool ARCH_32_BIT = $$REGISTER_SIZE == 32;
 const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
-const bool NO_LIBC = !$$COMPILER_LIBC_AVAILABLE;
+const bool NO_LIBC = !LIBC && !CUSTOM_LIBC;
+const bool CUSTOM_LIBC = $$CUSTOM_LIBC;
 const CompilerOptLevel COMPILER_OPT_LEVEL = CompilerOptLevel.from_ordinal($$COMPILER_OPT_LEVEL);
 const bool BIG_ENDIAN = $$PLATFORM_BIG_ENDIAN;
 const bool I128_NATIVE_SUPPORT = $$PLATFORM_I128_SUPPORTED;
@@ -153,19 +154,20 @@ const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
 const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool BSD_FAMILY = env::FREEBSD || env::OPENBSD || env::NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
+const bool WASM = ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool ANDROID = LIBC && OS_TYPE == ANDROID;
 const bool WASM_NOLIBC @builtin @deprecated("Use 'FREESTANDING_WASM' instead") = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool FREESTANDING_PE32 = NO_LIBC && OS_TYPE == WIN32;
 const bool FREESTANDING_MACHO = NO_LIBC && OS_TYPE == MACOS;
 const bool FREESTANDING_ELF = NO_LIBC && !env::FREESTANDING_PE32 && !env::FREESTANDING_MACHO && !env::FREESTANDING_WASM;
-const bool FREESTANDING_WASM = NO_LIBC && (ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64);
+const bool FREESTANDING_WASM = NO_LIBC && WASM;
 const bool FREESTANDING = env::FREESTANDING_PE32 || env::FREESTANDING_MACHO || env::FREESTANDING_ELF || env::FREESTANDING_WASM;
 const bool ADDRESS_SANITIZER = $$ADDRESS_SANITIZER;
 const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
 const bool THREAD_SANITIZER = $$THREAD_SANITIZER;
 const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANITIZER;
 const int LANGUAGE_DEV_VERSION = $$LANGUAGE_DEV_VERSION;
-const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32;
+const bool HAS_NATIVE_ERRNO = env::LINUX || env::ANDROID || env::OPENBSD || env::DARWIN || env::WIN32 || env::NETBSD;
 
 macro bool os_is_darwin() @const
 {

@@ -4,7 +4,7 @@
   "dependency-search-paths":  [ "lib" ],
   "dependencies":  [ "tree_sitter", "tree_sitter_c3" ],
   "authors":  [ "Lucas Michaudel <lucas.michaudel@gmail.com>" ],
-  "version": "0.1.1",
+  "version": "0.1.2",
   "sources":  [ "src/**" ],
   "test-sources":  [ "test/corpus.c3", "test/stdlib.c3" ],
   "build-dir": "build",

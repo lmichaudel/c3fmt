@@ -1,0 +1,31 @@
+{
+  "provides" : "tree_sitter_c3",
+
+  // Disable these if you don't want to link statically
+  "c-sources" : ["src/parser.c", "src/scanner.c"],
+  "c-include-dirs" : ["src"],
+  "cflags" : "-O2 -fPIC",
+
+  "targets" : {
+    "linux-aarch64" : {
+    },
+    "linux-riscv32" : {
+    },
+    "linux-riscv64" : {
+    },
+    "linux-x86" : {
+    },
+    "linux-x64" : {
+    },
+    "macos-aarch64" : {
+    },
+    "macos-x64" : {
+    },
+    "netbsd-x64" : {
+    },
+    "openbsd-x64" : {
+    },
+    "windows-x64" : {
+    },
+  }
+}
