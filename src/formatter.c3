@@ -996,8 +996,6 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_composite(node, skip_space_type: { ",", ")" }, skip_space_if_after: { "(" },);
 		case "attribute_arg":
 			self.process_sequence(node);
-		case "generic_type_ident":
-			self.process_sequence(node);
 		case "access_ident":
 			self.process_sequence(node);
 		case "access_eval":
@@ -1069,7 +1067,7 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "generic_type_ident":
 			self.process_composite(node);
 		case "generic_arg_list":
-			self.process_composite(node, skip_space_type: { ">", "," }, skip_space_if_after: { "<" },);
+			self.process_composite(node, skip_space_type: { "}", ">", "," }, skip_space_if_after: { "{", "<" },);
 		case "generic_param_list":
 			self.process_composite(node, skip_space_type: { ">", "," }, skip_space_if_after: { "<" },);
 		case "initializer_element":
