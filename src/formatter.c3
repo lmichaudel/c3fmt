@@ -964,6 +964,8 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 			self.process_composite(node, skip_space_type: { ",", ";" }, append_newline: true);
 		case "import_declaration": // TODO is buggy (see https://github.com/c3lang/tree-sitter-c3/issues/49)
 			self.process_composite(node, skip_space_type: { ",", ";" }, append_newline: true);
+		case "import_path":
+			self.process_composite(node);
 		case "path_ident":
 			self.process_sequence(node);
 		case "module_resolution":

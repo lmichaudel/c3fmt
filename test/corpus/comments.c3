@@ -25,7 +25,7 @@ fn void main () {}
  @require foo != null
  @ensure return > foo.x
 *>
-import module;
+import module @private, other @public;
 
 <*
  @param [&in] i

@@ -21,16 +21,15 @@ fn void main()
 <*
  @require foo > 0, foo < 1000 : "optional error msg"
 *>
-fn void main ()
+fn void main()
 {
-
 }
 
 <*
  @require foo != null
  @ensure return > foo.x
 *>
-import module;
+import module @private, other @public;
 
 <*
  @param [&in] i
