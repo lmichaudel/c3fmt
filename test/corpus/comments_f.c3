@@ -21,18 +21,25 @@ fn void main()
 <*
  @require foo > 0, foo < 1000 : "optional error msg"
 *>
+fn void main ()
+{
+
+}
 
 <*
  @require foo != null
  @ensure return > foo.x
 *>
+import module;
 
 <*
  @param [&in] i
 *>
+alias name = type;
 
 <*
  @require $defined(resource.open, resource.open()) : `Expected resource to have an "open" function`
  @require resource != nil
  @require $assignable(resource.open(), void*)
 *>
+faultdef FAULT;

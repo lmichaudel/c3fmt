@@ -182,7 +182,8 @@ fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = {
 		TSNode child = ts::node_child(node, i);
 		String type = child.type();
 
-		if (i > 0 && !skip_space_type.contains(type) && !skip_space_if_after.contains(ts::node_child(node, i - 1).type()))
+		if (i > 0 && !(i == 1 && ts::node_child(node, 0).type() == "doc_comment") &&
+		 !skip_space_type.contains(type) && !skip_space_if_after.contains(ts::node_child(node, i - 1).type()))
 		{
 			self.buf.space();
 		}
