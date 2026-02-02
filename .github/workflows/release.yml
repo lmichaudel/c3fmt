@@ -38,12 +38,24 @@ jobs:
           # cp -r c3-windows-Release c3
           echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
 
+      - name: Install Homebrew
+        if: runner.os == 'macOS'
+        run: |
+          if ! command -v brew >/dev/null; then
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            echo "/opt/homebrew/bin" >> $GITHUB_PATH
+          fi
+
+      - name: Install lld
+        if: runner.os == 'macOS'
+        run: brew install lld
+
       - name: Install tree-sitter
         uses: lmichaudel/ts-setup-action@master
         with:
           install-lib: true
           install-cli: false
-          
+
       - name: Build c3fmt
         if: runner.os == 'macOS' || runner.os == 'Linux'
         run: ./c3/c3c build -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
