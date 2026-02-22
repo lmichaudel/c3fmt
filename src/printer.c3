@@ -286,9 +286,8 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 
 	if(need_processing) {
 		usz i = 0;
-		bool found_group = false;
 		usz group_id = 0;
-		bool took_one_wp = false;
+		bool found_group = false;
 		bool skip_next_space = false;
 		usz next_indent_increase = 0;
 		usz line_finish_indent_increase = 0;
@@ -350,7 +349,6 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 
 					line_finish_indent_increase = token.wrap_point.indent;
 					next_indent_increase = 1;
-					took_one_wp = true;
 				case SPACE:
 					if(!skip_next_space) {
 						new_buf.push(token);

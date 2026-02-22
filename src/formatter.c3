@@ -778,19 +778,29 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "macro_header":
 			self.process_composite(node, skip_space_type: { "." }, skip_space_if_after: { "." },);
 		case "macro_param_list":
-			usz id = self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
+			if(node.has_child_of_type("param"))
 			{
-				switch (type)
+				usz id = self.buf.begin_wrap_group();
+				self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
 				{
-					case "param":
-						return { .indent = 1, .group_id = id };
-					case ")":
-						return { .indent = 0, .group_id = id };
-					default:
-						return NO_WRAP~;
-				}
-			}, group_id: id);
+					switch (type)
+					{
+						case "param":
+							return { .indent = 1, .group_id = id };
+						case ")":
+							return { .indent = 0, .group_id = id };
+						default:
+							return NO_WRAP~;
+					}
+				}, group_id: id);
+			}
+			else
+			{
+				self.process_composite(node,
+					skip_space_type: { ")", ",", ";" },
+					skip_space_if_after: { "(" }
+				);
+			}
 		case "trailing_block_param":
 			self.process_sequence(node);
 		case "macro_func_body":
@@ -972,19 +982,26 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "call_expr":
 			self.process_composite(node, skip_space_type: { "call_arg_list" });
 		case "call_arg_list":
-			usz id = self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
+		 	if(node.has_child_of_type("call_arg"))
 			{
-				switch (type)
+				usz id = self.buf.begin_wrap_group();
+				self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
 				{
-					case ")":
-						return { .indent = 0, .group_id = id };
-					case "call_arg":
-						return { .indent = 1, .group_id = id };
-					default:
-						return NO_WRAP~;
-				}
-			}, group_id: id);
+					switch (type)
+					{
+						case ")":
+							return { .indent = 0, .group_id = id };
+						case "call_arg":
+							return { .indent = 1, .group_id = id };
+						default:
+							return NO_WRAP~;
+					}
+				}, group_id: id);
+			}
+			else
+			{
+				self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" });
+			}
 		case "call_args":
 			self.process_composite(node);
 		case "call_arg":
@@ -1006,20 +1023,25 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "type_paren_expr":
 			self.process_composite(node, skip_space_type: { ")" }, skip_space_if_after: { "(" },);
 		case "initializer_list":
-			usz id = self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { "," }, add_wrap_point_fn: fn (String type, usz id)
-			{
-				switch (type)
+			if(node.has_child_of_type("initializer_element")) {
+				usz id = self.buf.begin_wrap_group();
+				self.process_composite(node, skip_space_type: { "," }, add_wrap_point_fn: fn (String type, usz id)
 				{
-					case "initializer_element":
-						return { .indent = 1, .group_id = id};
-					case "}":
-						return { .indent = 0, .group_id = id};
-					default:
-						return NO_WRAP~;
-				}
-			}, group_id: id);
-			//self.process_composite(node, skip_space_type: { "," },);
+					switch (type)
+					{
+						case "initializer_element":
+							return { .indent = 1, .group_id = id};
+						case "}":
+							return { .indent = 0, .group_id = id};
+						default:
+							return NO_WRAP~;
+					}
+				}, group_id: id);
+			}
+			else
+			{
+				self.process_composite(node, skip_space_type: { "," });
+			}
 		case "comma_decl_or_expr":
 			self.process_composite(node, skip_space_type: { ",", ")" }, skip_space_if_after: { "(" });
 		case "interface_impl_list":
@@ -1045,17 +1067,24 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "optional_expr":
 		case "cast_expr":
 		case "field_expr":
-			usz id = self.buf.begin_wrap_group();
-			self.process_sequence(node, add_wrap_point_fn: fn (String type, usz id)
+			if(node.has_child_of_type(".") && ts::node_parent(node).type() != "param_path")
 			{
-				switch (type)
+				usz id = self.buf.begin_wrap_group();
+				self.process_sequence(node, add_wrap_point_fn: fn (String type, usz id)
 				{
-					case ".":
-						return { .indent = 1, .group_id = id};
-					default:
-						return NO_WRAP~;
-				}
-			}, group_id: id);
+					switch (type)
+					{
+						case ".":
+							return { .indent = 1, .group_id = id};
+						default:
+							return NO_WRAP~;
+					}
+				}, group_id: id);
+			}
+			else
+			{
+				self.process_sequence(node);
+			}
 		case "subscript_expr":
 		case "range_expr":
 		case "rethrow_expr": // TO BE TESTED
