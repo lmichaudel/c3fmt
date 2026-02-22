@@ -161,7 +161,7 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 }
 
 faultdef NO_WRAP;
-alias AddWrapPointFn = fn WrapPoint?(String type);
+alias AddWrapPointFn = fn WrapPoint?(String type, usz id);
 <*
  Format a "line" composed of several nodes.
  Append a white space between each node.
@@ -175,7 +175,7 @@ alias AddWrapPointFn = fn WrapPoint?(String type);
  @param append_newline : "If true, will append a newline"
  @param add_wrap_point_fn : "Allow to set wrap point on specific children"
 *>
-fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = { ";" }, String[] skip_space_if_after = { }, bool append_newline = false, AddWrapPointFn add_wrap_point_fn = null)
+fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = { ";" }, String[] skip_space_if_after = { }, bool append_newline = false, AddWrapPointFn add_wrap_point_fn = null, usz group_id = 0)
 {
 	for (uint i = 0; i < ts::node_child_count(node); ++i)
 	{
@@ -190,7 +190,7 @@ fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = {
 
 		if (add_wrap_point_fn && self.wrapping_enabled)
 		{
-			WrapPoint? wrap_point = add_wrap_point_fn(type);
+			WrapPoint? wrap_point = add_wrap_point_fn(type, group_id);
 			if (try wrap_point)
 			{
 				self.buf.wrap_point(wrap_point);
@@ -232,89 +232,25 @@ fn void C3Fmt.process_composite(&self, TSNode node, String[] skip_space_type = {
 	}
 }
 
-fn void C3Fmt.process_ct_composite(&self, TSNode node, String[] skip_space_type = { ";" }, String[] skip_space_if_after = { }, bool append_newline = false, AddWrapPointFn add_wrap_point_fn = null)
-{
-	for (uint i = 0; i < ts::node_child_count(node); ++i)
-	{
-		TSNode child = ts::node_child(node, i);
-		String type = child.type();
-
-		if (i > 0 && !skip_space_type.contains(type) && !skip_space_if_after.contains(ts::node_child(node, i - 1).type()))
-		{
-			self.buf.space();
-		}
-
-		if (add_wrap_point_fn)
-		{
-			WrapPoint? wrap_point = add_wrap_point_fn(type);
-			if (try wrap_point)
-			{
-				self.buf.wrap_point(wrap_point);
-			}
-		}
-
-		if (child.is_comment())
-		{
-			if (child.type() == "block_comment")
-			{
-				self.process_block_comment(child);
-			}
-			if (child.type() == "line_comment")
-			{
-				if (i == ts::node_child_count(node) - 1)
-				{
-					io::eprintfn("Found an inline comment as last child?");
-					unreachable();
-				}
-				self.buf.inline_comment(child.get_text(self.source_code));
-			}
-		}
-		else
-		{
-			if (type == ":")
-			{
-				bool skip_newline = false;
-				if (i < ts::node_child_count(node) - 1)
-				{
-					TSNode next = ts::node_child(node, i + 1);
-					if (next.type() == "line_comment")
-					{
-						skip_newline = true;
-					}
-				}
-
-				if (!skip_newline)
-				{
-					self.buf.newline();
-				}
-			}
-			if (ts::node_is_named(child))
-			{
-				self.process_node(child);
-			}
-			else
-			{
-				self.buf.text(child.get_text(self.source_code));
-			}
-		}
-	}
-
-	if (append_newline)
-	{
-		self.buf.newline();
-	}
-}
-
 <*
  Rawly format node sequentially, without appending any separator between them.
  Useful for nodes like field accessor ("my_struct.my_field").
  @param node : "The processed node"
 *>
-fn void C3Fmt.process_sequence(&self, TSNode node)
+fn void C3Fmt.process_sequence(&self, TSNode node, AddWrapPointFn add_wrap_point_fn = null, usz group_id = 0)
 {
 	for (uint i = 0; i < ts::node_child_count(node); ++i)
 	{
 		TSNode child = ts::node_child(node, i);
+
+		if (add_wrap_point_fn && self.wrapping_enabled)
+		{
+			WrapPoint? wrap_point = add_wrap_point_fn(child.type(), group_id);
+			if (try wrap_point)
+			{
+				self.buf.wrap_point(wrap_point);
+			}
+		}
 
 		if (child.is_comment())
 		{
@@ -818,19 +754,19 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "func_header":
 			self.process_composite(node, skip_space_type: { "." }, skip_space_if_after: { "." },);
 		case "func_param_list":
-			self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type)
+			usz id = self.buf.begin_wrap_group();
+			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
 			{
 				switch (type)
 				{
 					case "param":
-						return { .mode = IMPLIED, .indent = 1 };
+						return { .indent = 1, .group_id = id};
 					case ")":
-						return { .mode = SUPER_IMPLIED, .indent = 0 };
+						return { .indent = 0, .group_id = id};
 					default:
 						return NO_WRAP~;
 				}
-			});
+			}, group_id: id);
 		case "param":
 			self.process_composite(node, skip_space_if_after: { "&" },);
 		case "param_default":
@@ -842,19 +778,19 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "macro_header":
 			self.process_composite(node, skip_space_type: { "." }, skip_space_if_after: { "." },);
 		case "macro_param_list":
-			self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type)
+			usz id = self.buf.begin_wrap_group();
+			self.process_composite(node, skip_space_type: { ")", ",", ";" }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
 			{
 				switch (type)
 				{
 					case "param":
-						return { .mode = IMPLIED, .indent = 1 };
+						return { .indent = 1, .group_id = id };
 					case ")":
-						return { .mode = SUPER_IMPLIED, .indent = 0 };
+						return { .indent = 0, .group_id = id };
 					default:
 						return NO_WRAP~;
 				}
-			});
+			}, group_id: id);
 		case "trailing_block_param":
 			self.process_sequence(node);
 		case "macro_func_body":
@@ -1036,19 +972,19 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "call_expr":
 			self.process_composite(node, skip_space_type: { "call_arg_list" });
 		case "call_arg_list":
-			self.buf.begin_wrap_group();
-			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type)
+			usz id = self.buf.begin_wrap_group();
+			self.process_composite(node, skip_space_type: { ")", "," }, skip_space_if_after: { "(" }, add_wrap_point_fn: fn (String type, usz id)
 			{
 				switch (type)
 				{
 					case ")":
-						return { .mode = SUPER_IMPLIED, .indent = 0 };
+						return { .indent = 0, .group_id = id };
 					case "call_arg":
-						return { .mode = IMPLIED, .indent = 1 };
+						return { .indent = 1, .group_id = id };
 					default:
 						return NO_WRAP~;
 				}
-			});
+			}, group_id: id);
 		case "call_args":
 			self.process_composite(node);
 		case "call_arg":
@@ -1070,7 +1006,20 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "type_paren_expr":
 			self.process_composite(node, skip_space_type: { ")" }, skip_space_if_after: { "(" },);
 		case "initializer_list":
-			self.process_composite(node, skip_space_type: { "," },);
+			usz id = self.buf.begin_wrap_group();
+			self.process_composite(node, skip_space_type: { "," }, add_wrap_point_fn: fn (String type, usz id)
+			{
+				switch (type)
+				{
+					case "initializer_element":
+						return { .indent = 1, .group_id = id};
+					case "}":
+						return { .indent = 0, .group_id = id};
+					default:
+						return NO_WRAP~;
+				}
+			}, group_id: id);
+			//self.process_composite(node, skip_space_type: { "," },);
 		case "comma_decl_or_expr":
 			self.process_composite(node, skip_space_type: { ",", ")" }, skip_space_if_after: { "(" });
 		case "interface_impl_list":
@@ -1096,6 +1045,17 @@ fn void C3Fmt.process_node(&self, TSNode node, bool inside_compound = false, boo
 		case "optional_expr":
 		case "cast_expr":
 		case "field_expr":
+			usz id = self.buf.begin_wrap_group();
+			self.process_sequence(node, add_wrap_point_fn: fn (String type, usz id)
+			{
+				switch (type)
+				{
+					case ".":
+						return { .indent = 1, .group_id = id};
+					default:
+						return NO_WRAP~;
+				}
+			}, group_id: id);
 		case "subscript_expr":
 		case "range_expr":
 		case "rethrow_expr": // TO BE TESTED

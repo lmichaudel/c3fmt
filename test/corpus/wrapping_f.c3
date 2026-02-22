@@ -11,13 +11,18 @@ fn int main(
 	);
 
 	main(a__long__arg: "a long string", a__long__arg: "", //
-		30
-	);
+		30);
 
 	main(//
 		a__long__arg: "a very long string that will go beyond 80 words", //
-		a__long__arg: "", 30
+		a__long__arg: "",
+		30
 	);
+
+	RenderingInfo rendering_info = vk::renderingInfo().setLayerCount(1)
+		.setRenderArea(
+			{ .offset = { .x = 0, .y = 0 }, .extent = context.extent, }
+		);
 }
 
 fn int Termios.setAttr(

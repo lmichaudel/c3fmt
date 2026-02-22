@@ -13,21 +13,10 @@ enum TokenKind
 	INLINE_COMMENT,
 }
 
-// IMPLIED means if one wrap point of the same group was taken,
-// this one should be taken too for style
-// But forced wrap with line comments reset wrap group
-// SUPER_IMPLIED acts the same but is taken even if the wrap was forced by
-// a line comment.
-enum WrapMode
-{
-	IMPLIED,
-	SUPER_IMPLIED
-}
-
 struct WrapPoint
 {
-	WrapMode mode;
 	usz indent;
+	usz group_id;
 }
 
 struct Token
@@ -73,9 +62,9 @@ fn Token inline_comment(String text)
 	return (Token) { .kind = INLINE_COMMENT, .str = text };
 }
 
-fn Token begin_wrap_group()
+fn Token begin_wrap_group(usz id)
 {
-	return (Token) { .kind = BEGIN_WRAP_GROUP };
+	return (Token) { .kind = BEGIN_WRAP_GROUP, .wrap_point = {.group_id = id} };
 }
 
 fn Token wrap_point(WrapPoint wrap_point)
@@ -112,6 +101,7 @@ fn String Token.print(&self)
 {
 	switch (self.kind)
 	{
+		case BEGIN_WRAP_GROUP:
 		case WRAP_POINT:
 		case EOF:
 			return "";
@@ -123,8 +113,6 @@ fn String Token.print(&self)
 			return self.str;
 		case INLINE_COMMENT:
 			return self.str;
-		case BEGIN_WRAP_GROUP:
-			unreachable();
 		case INDENT:
 			unreachable();
 		case DEDENT:
@@ -202,9 +190,11 @@ fn void C3Fmt.print(&self)
 	// 			io::printf(">");
 	// 		case DEDENT:
 	// 			io::printf("<");
-	// 		case WRAP_POINT:
-	// 		case BEGIN_WRAP_GROUP:
 	// 		case INLINE_COMMENT:
+	// 			io::printf("//");
+	// 		case WRAP_POINT:
+	// 			io::printf("WP");
+	// 		case BEGIN_WRAP_GROUP:
 	// 		case SPACE:
 	// 	}
 	// 	io::printf(" ");
@@ -252,23 +242,8 @@ fn void C3Fmt.print_indent(&self)
 	}
 }
 
-fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
-{
-	if (tokens.len == 1 && tokens[0].kind == NEWLINE)
-	{
-		self.dstr_buf.append('\n');
-		return;
-	}
-
+fn usz C3Fmt.calculate_line_length(&self, Token[] tokens, usz indent_level) {
 	usz line_length = 0;
-	if (self.config.use_tabs)
-	{
-		line_length += self.config.tab_size;
-	}
-	else
-	{
-		line_length += self.config.indent_width;
-	}
 
 	foreach (token : tokens)
 	{
@@ -277,132 +252,133 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 
 	for (usz i = 0; i < indent_level; ++i)
 	{
-		self.print_indent();
-	}
-
-	bool force_take_wrap_point = false;
-	bool wrap_point_needed = self.config.max_line_length > 0 && line_length > self.config.max_line_length;
-
-	bool took_one_wp_in_group = false;
-	bool took_one_forced_wp_in_group = false;
-	foreach (id, token : tokens)
-	{
-		if (token.kind == BEGIN_WRAP_GROUP)
+		if (self.config.use_tabs)
 		{
-			took_one_wp_in_group = false;
-			took_one_forced_wp_in_group = false;
-			continue;
-		}
-
-		// Finding an inline comment forces wrap
-		// if there is a wrap point just after
-		// otherwise it's just a very formatting from the user
-		// like:
-		// int a = 10 // i'm a psycho
-		// ;
-		if (token.kind == INLINE_COMMENT)
-		{
-			self.dstr_buf.append("//");
-			if (token.str != "")
-			{
-				self.dstr_buf.append(" ");
-			}
-			self.dstr_buf.append(token.print());
-			self.dstr_buf.append('\n');
-			force_take_wrap_point = true;
-			continue;
-		}
-
-		// skip space
-		if (token.kind == SPACE && force_take_wrap_point)
-		{
-			continue;
-		}
-		if (token.kind != WRAP_POINT)
-		{
-			force_take_wrap_point = false;
-		}
-
-		if (force_take_wrap_point)
-		{
-			for (usz i = 0; i < indent_level + token.wrap_point.indent; ++i)
-			{
-				self.print_indent();
-			}
-
-			// Also recalculate our length after this wrap
-			usz new_line_length = 0;
-			if (self.config.use_tabs)
-			{
-				line_length += self.config.tab_size * (indent_level + token.wrap_point.indent);
-			}
-			else
-			{
-				line_length += self.config.indent_width * (indent_level + token.wrap_point.indent);
-			}
-
-			foreach (remaining_token : tokens[id + 1..])
-			{
-				line_length += token.len();
-			}
-
-			wrap_point_needed = new_line_length > self.config.max_line_length;
-			took_one_wp_in_group = false;
-			took_one_forced_wp_in_group = true;
-			// took_one_wp_in_group = false; // reset the group too
+			line_length += self.config.tab_size;
 		}
 		else
 		{
-			if (token.kind == WRAP_POINT)
-			{
-				if (wrap_point_needed || ((token.wrap_point.mode == IMPLIED || token.wrap_point.mode == SUPER_IMPLIED) && took_one_wp_in_group) || (token.wrap_point.mode == SUPER_IMPLIED && took_one_forced_wp_in_group))
-				{
-					took_one_wp_in_group = true;
+			line_length += self.config.indent_width;
+		}
+	}
 
-					while (self.dstr_buf[self.dstr_buf.len() - 1] == ' ')
-					{
-						self.dstr_buf.chop(self.dstr_buf.len() - 1);
+	return line_length;
+}
+
+fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
+{
+	if (tokens.len == 1 && tokens[0].kind == NEWLINE)
+	{
+		self.dstr_buf.append('\n');
+		return;
+	}
+
+	usz line_length = self.calculate_line_length(tokens, indent_level);
+	bool need_wrapping = self.config.max_line_length > 0 && line_length > self.config.max_line_length;
+	bool need_processing = false;
+
+	foreach(token : tokens) {
+		if(token.kind == INLINE_COMMENT || token.kind == WRAP_POINT
+		|| token.kind == BEGIN_WRAP_GROUP) {
+			need_processing = true;
+		}
+	}
+
+	if(need_processing) {
+		usz i = 0;
+		bool found_group = false;
+		usz group_id = 0;
+		bool took_one_wp = false;
+		bool skip_next_space = false;
+		usz next_indent_increase = 0;
+		usz line_finish_indent_increase = 0;
+
+		TokenBuffer new_buf;
+		new_buf.init(mem);
+
+		foreach (id, token : tokens)
+		{
+			switch(token.kind) {
+				case BEGIN_WRAP_GROUP:
+					if(!need_wrapping) {
+						continue;
+					}
+					if(!found_group) {
+						found_group = true;
+						group_id = token.wrap_point.group_id;
+					} else {
+						new_buf.push(token);
+					}
+				case INLINE_COMMENT:
+					new_buf.push(token::text("//"));
+					if(token.str != "") {
+						new_buf.push(token::space());
+					}
+					new_buf.push(token::text(token.str));
+					new_buf.push(token::newline());
+					skip_next_space = id < (tokens.len - 1) && tokens[id+1].kind == SPACE;
+
+					self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+					i = new_buf.size;
+
+					line_finish_indent_increase = 1;
+					next_indent_increase = 1;
+				case WRAP_POINT:
+					if(!need_wrapping) {
+						continue;
 					}
 
-					self.dstr_buf.append('\n');
-					for (usz i = 0; i < indent_level + token.wrap_point.indent; ++i)
-					{
-						self.print_indent();
+					bool forced = false;
+					if(new_buf.size > 2) {
+						if(new_buf[^1].kind == NEWLINE
+							|| (new_buf[^2].kind == NEWLINE && new_buf[^1].kind == SPACE))
+						{
+							forced = true;
+						}
 					}
 
-					// Calculate what is the size of the remaining tokens
-					// after this wrap.
-					usz new_line_length = 0;
-					if (self.config.use_tabs)
-					{
-						line_length += self.config.tab_size * (indent_level + token.wrap_point.indent);
-					}
-					else
-					{
-						line_length += self.config.indent_width * (indent_level + token.wrap_point.indent);
+					if(token.wrap_point.group_id != group_id) {
+						new_buf.push(token);
+						continue;
 					}
 
-					foreach (remaining_token : tokens[id + 1..])
-					{
-						line_length += token.len();
+					if(!forced) {
+						new_buf.push(token::newline());
+						self.print_line(new_buf.array_view()[i..], indent_level + next_indent_increase);
+						i = new_buf.size;
 					}
 
-					wrap_point_needed = new_line_length > self.config.max_line_length;
-				}
-			}
-			else
-			{
-				if (token.kind == INLINE_COMMENT)
-				{
-					self.dstr_buf.append("//");
-					if (token.str != "")
-					{
-						self.dstr_buf.append(" ");
+					line_finish_indent_increase = token.wrap_point.indent;
+					next_indent_increase = 1;
+					took_one_wp = true;
+				case SPACE:
+					if(!skip_next_space) {
+						new_buf.push(token);
+					} else {
+						skip_next_space = false;
 					}
-				}
-				self.dstr_buf.append(token.print());
+				default:
+					new_buf.push(token);
 			}
 		}
+
+		self.print_line(new_buf.array_view()[i..], indent_level + line_finish_indent_increase);
+		new_buf.free();
+		return;
+	}
+
+	for (usz i = 0; i < indent_level; ++i)
+	{
+		self.print_indent();
+	}
+
+	foreach (id, token : tokens)
+	{
+		// trim one space
+		if(token.kind == SPACE && (id < (tokens.len - 1) && tokens[id+1].kind == NEWLINE)) {
+			continue;
+		}
+		self.dstr_buf.append(token.print());
 	}
 }
 
@@ -441,9 +417,13 @@ fn void TokenBuffer.inline_comment(&self, String text)
 	self.push(token::inline_comment(text));
 }
 
-fn void TokenBuffer.begin_wrap_group(&self)
+fn usz TokenBuffer.begin_wrap_group(&self)
 {
-	self.push(token::begin_wrap_group());
+	static usz group_id = 0;
+	group_id++;
+	self.push(token::begin_wrap_group(group_id));
+
+	return group_id;
 }
 
 fn void TokenBuffer.wrap_point(&self, WrapPoint wrap_point)
