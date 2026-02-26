@@ -182,29 +182,7 @@ fn void C3Fmt.print(&self)
 		return;
 	}
 
-	// for debugging
-	// foreach(tok : self.buf) {
-	// switch(tok.kind) {
-	// case NEWLINE:
-	// io::printf("NL");
-	// case EOF:
-	// io::printf("EOF");
-	// case TEXT:
-	// io::printf("%s", tok.str);
-	// case INDENT:
-	// io::printf(">");
-	// case DEDENT:
-	// io::printf("<");
-	// case INLINE_COMMENT:
-	// io::printf("//");
-	// case WRAP_POINT:
-	// io::printf("WP");
-	// case BEGIN_WRAP_GROUP:
-	// case SPACE:
-	// }
-	// io::printf(" ");
-	// }
-	// io::printfn("");
+	//dbg(self.buf.array_view());
 
 	usz indent_level = 0;
 	for (usz i = 0, usz j = 0; j < token_count; ++j)

@@ -251,7 +251,7 @@ fn void C3Fmt.process_composite(
 		{
 			if (ts::node_is_named(child))
 			{
-				self.process_node(child, found_inline);
+				self.process_node(child);
 			}
 			else
 			{
@@ -1238,6 +1238,9 @@ fn void C3Fmt.process_node(
 				node,
 				add_wrap_point_fn: fn (String type, String field, usz id)
 			{
+				if(type == "<" || type == "<=" || type == ">" || type == ">=") {
+					return NO_WRAP~;
+				}
 				switch (field)
 				{
 					case "operator":
