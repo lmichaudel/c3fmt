@@ -872,7 +872,6 @@ fn void C3Fmt.process_node(
 			self.process_composite(
 				node,
 				skip_space_type: { ";", "func_param_list" },
-				append_newline: true
 			);
 		case "interface_func_declaration":
 			self.process_composite(
