@@ -82,6 +82,7 @@ fn bool String[].contains(&self, String str)
 
 import std::io;
 
+// checks semantic of the named node only
 fn bool same_semantic(TSNode a, TSNode b)
 {
 	if (a.type() != b.type() && !(a.is_comment() && b.is_comment()))
@@ -89,8 +90,8 @@ fn bool same_semantic(TSNode a, TSNode b)
 		return false;
 	}
 
-	uint a_cc = ts::node_child_count(a);
-	uint b_cc = ts::node_child_count(b);
+	uint a_cc = ts::node_named_child_count(a);
+	uint b_cc = ts::node_named_child_count(b);
 
 	if (a_cc != b_cc && !(a.is_comment() && b.is_comment()))
 	{
@@ -99,7 +100,7 @@ fn bool same_semantic(TSNode a, TSNode b)
 
 	for (uint i = 0; i < a_cc; ++i)
 	{
-		if (!same_semantic(ts::node_child(a, i), ts::node_child(b, i)))
+		if (!same_semantic(ts::node_named_child(a, i), ts::node_named_child(b, i)))
 		{
 			return false;
 		}
