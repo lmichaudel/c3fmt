@@ -1428,9 +1428,7 @@ fn void C3Fmt.process_node(
 			TSNode body = node.get_child_with_field("body");
 			self.process_composite(
 				node,
-				append_newline: body.type() == "compound_stmt"
-					|| body.type()
-						== ";" // TODO investigate this (see io/formatter_private.c3:363)
+				append_newline: (body.type() == "compound_stmt" || body.type() == ";")
 			);
 		case "for_cond":
 			self.process_composite(
@@ -1466,14 +1464,17 @@ fn void C3Fmt.process_node(
 			self.process_composite(
 				node,
 				append_newline: body.type() == "compound_stmt"
-					&& parent.type() != "else_part"
+					&& !node.has_child_of_type("else_part")
 			);
 		case "else_part":
 			if (self.config.else_on_newline)
 			{
 				self.buf.newline();
 			}
-			self.process_composite(node);
+			self.process_composite(
+				node,
+				append_newline: !node.has_child_of_type("if_stmt")
+			);
 		case "switch_stmt":
 			self.process_composite(
 				node,
