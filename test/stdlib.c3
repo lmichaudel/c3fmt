@@ -9,26 +9,20 @@ fn Path? convert_path(Path input, Allocator allocator)
 {
     Path cwd = path::cwd(mem)!;
     defer cwd.free();
-    String cwd_str = cwd.str_view();
-    String in_str  = input.str_view();
+    String cwd_s = cwd.str_view().replace(mem, "\\", "/");
+    defer cwd_s.free(mem);
+    String in_s = input.str_view().replace(mem, "\\", "/");
+    defer in_s.free(mem);
 
-    if (!in_str.starts_with(cwd_str)) {
-        return INVALID_PATH~;
-    }
+    if (!in_s.starts_with(cwd_s)) return INVALID_PATH~;
 
-    usz rel_start = cwd_str.len;
-    if (in_str.len > rel_start && std::io::path::is_separator(in_str[rel_start], input.env)) {
-        rel_start++;
-    }
+    usz rel_start = cwd_s.len;
+    if (in_s.len > rel_start && in_s[rel_start] == '/') rel_start++;
 
-    String rel = in_str[rel_start..];
-
-    if (!rel.starts_with(ROOT)) {
-        return INVALID_PATH~;
-    }
+    String rel = in_s[rel_start..];
+    if (!rel.starts_with(ROOT)) return INVALID_PATH~;
 
     String stripped = rel[ROOT.len..];
-
     DString d = dstring::new(mem);
     defer d.free();
     d.append("test/stdlib/src-formatted");
@@ -36,6 +30,7 @@ fn Path? convert_path(Path input, Allocator allocator)
 
     return path::new(allocator, d.str_view(), input.env);
 }
+
 
 fn bool? process_source_file(Path path, bool is_dir, any data)
 {
