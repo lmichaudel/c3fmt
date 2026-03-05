@@ -3,6 +3,7 @@ name: CI & Release
 on:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
   pull_request:
     branches: [ main ]
   workflow_dispatch:
@@ -104,3 +105,42 @@ jobs:
         with:
           name: c3fmt-windows
           path: build/c3fmt.exe
+
+  release:
+    name: Create Release
+    needs: build-and-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: c3fmt-linux
+          path: release-bin/linux
+
+      - name: Download macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: c3fmt-macos
+          path: release-bin/macos
+
+      - name: Download Windows binary
+        uses: actions/download-artifact@v4
+        with:
+          name: c3fmt-windows
+          path: release-bin/windows
+
+      - name: Prepare files for release
+        run: |
+          mkdir dist
+          mv release-bin/linux/c3fmt dist/c3fmt-linux
+          mv release-bin/macos/c3fmt dist/c3fmt-macos
+          mv release-bin/windows/c3fmt.exe dist/c3fmt-windows.exe
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
