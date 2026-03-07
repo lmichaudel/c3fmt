@@ -275,11 +275,6 @@ fn void C3Fmt.process_composite(
 			}
 			if (child.type() == "line_comment")
 			{
-				if (i == ts::node_child_count(node) - 1)
-				{
-					io::eprintfn("Found an inline comment as last child?");
-					unreachable();
-				}
 				self.buf.inline_comment(self.extract_comment_string(child));
 				found_inline = true;
 			}
@@ -765,32 +760,71 @@ fn void C3Fmt.process_line_comment(&self, TSNode node)
 fn void C3Fmt.process_doc_comment(&self, TSNode node)
 {
 	self.wrapping_enabled = false;
+	uint named_count = ts::node_named_child_count(node);
+
+	bool is_single_line = node.start_point().row == node.end_point().row;
+
 	self.buf.text("<*");
-	self.buf.newline();
-	for (uint i = 0; i < ts::node_named_child_count(node); ++i)
+	if (is_single_line)
+	{
+		self.buf.space();
+	}
+	else
+	{
+		self.buf.newline();
+	}
+
+	for (uint i = 0; i < named_count; ++i)
 	{
 		TSNode child = ts::node_named_child(node, i);
 
-		int blank_line_amount = 0;
-		if (i > 0)
+		if (!is_single_line)
 		{
-			TSNode sibling = ts::node_named_child(node, i - 1);
-			blank_line_amount = child.start_point_row()
-				- sibling.end_point_row();
-		}
-		blank_line_amount = min(
-			blank_line_amount,
-			self.config.max_blank_line_between_statements + 1
-		);
+			int blank_line_amount = 0;
+			if (i > 0)
+			{
+				TSNode sibling = ts::node_named_child(node, i - 1);
+				blank_line_amount = child.start_point_row()
+					- sibling.end_point_row();
+			}
+			blank_line_amount = min(
+				blank_line_amount,
+				self.config.max_blank_line_between_statements + 1
+			);
 
-		for (int j = 0; child.type() != "doc_comment_contract"
-			&& j < blank_line_amount - 1; ++j)
+			for (int j = 0; child.type() != "doc_comment_contract"
+				&& j < blank_line_amount - 1; ++j)
+			{
+				self.buf.newline();
+			}
+			self.buf.space();
+		}
+		else if (i > 0)
 		{
-			self.buf.newline();
+			self.buf.space();
 		}
 
+		if (is_single_line)
+		{
+			if (child.type() == "doc_comment_contract") {
+				self.process_composite(child, skip_space_type: { "(", ")", "," }, skip_space_if_after: { "(" });
+			} else {
+				self.buf.text(child.get_text(self.source_code));
+			}
+		}
+		else
+		{
+			self.process_node(child, inside_doc_comment: true);
+		}
+	}
+
+	if (is_single_line)
+	{
 		self.buf.space();
-		self.process_node(child, inside_doc_comment: true);
+	}
+	else if (named_count == 0)
+	{
+		self.buf.newline();
 	}
 
 	self.buf.text("*>");
@@ -1045,11 +1079,75 @@ fn void C3Fmt.process_node(
 			self.buf.dedent();
 			self.buf.text("}");
 		case "faultdef_declaration":
-			self.process_composite(
-				node,
-				skip_space_type: { ",", ";" },
-				append_newline: true
-			);
+			uint start_row = node.start_point().row;
+			for (uint i = 0; i < ts::node_child_count(node); ++i)
+			{
+				TSNode child = ts::node_child(node, i);
+				if (child.type() == "faultdef")
+				{
+					start_row = child.start_point().row;
+					break;
+				}
+			}
+			bool is_multi = start_row != node.end_point().row;
+			for (uint i = 0; i < ts::node_child_count(node); ++i)
+			{
+				TSNode child = ts::node_child(node, i);
+				String type = child.type();
+
+				if (type == "doc_comment")
+				{
+					self.process_node(child);
+					continue;
+				}
+
+				if (type == "faultdef")
+				{
+					self.buf.text("faultdef");
+					if (is_multi)
+					{
+						self.buf.newline();
+						self.buf.indent();
+					}
+					continue;
+				}
+
+				if (type == ";")
+				{
+					if (is_multi)
+					{
+						self.buf.newline();
+						self.buf.dedent();
+					}
+					self.buf.text(";");
+					self.buf.newline();
+					continue;
+				}
+
+				if (i > 0 && type != "," && type != ";")
+				{
+					// Avoid space after faultdef if is_multi
+					// AND avoid space after a line comment (which already broke the line)
+					if (!(ts::node_child(node, i - 1).type() == "faultdef" && is_multi)
+						&& ts::node_child(node, i - 1).type() != "line_comment")
+					{
+						self.buf.space();
+					}
+				}
+
+				if (child.is_comment())
+				{
+					self.buf.inline_comment(self.extract_comment_string(child));
+				}
+				else if (ts::node_is_named(child))
+				{
+					self.process_node(child);
+				}
+				else
+				{
+					self.buf.text(child.get_text(self.source_code));
+				}
+			}
 		case "attrdef_declaration":
 			self.process_composite(
 				node,
