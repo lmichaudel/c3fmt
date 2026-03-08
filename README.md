@@ -86,3 +86,7 @@ The test suite includes:
 - Import sorting.
 - Pointer alignment calibration.
 
+## Known issues
+
+- Initializers (nested struct initializers like `.x.y = 34`): this fail
+
