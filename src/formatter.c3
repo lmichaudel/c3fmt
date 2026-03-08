@@ -18,6 +18,7 @@ struct C3Fmt
 	TSParser* parser;
 	TokenBuffer buf;
 	DString dstr_buf;
+	uint indent_level;
 }
 
 fn C3Fmt? new(String source_code, Config config)
@@ -31,6 +32,7 @@ fn C3Fmt? new(String source_code, Config config)
 	instance.parser = ts::parser::new_with_language(tree_sitter_c3::language())!;
 	instance.buf.init(mem);
 	instance.dstr_buf.init(mem);
+	instance.indent_level = 0;
 
 	return instance;
 }
@@ -46,8 +48,47 @@ fn void C3Fmt.free(&self)
 fn usz C3Fmt.begin_wrap_group(&self, usz priority)
 {
 	self.next_group_id++;
-	self.buf.begin_wrap_group(self.next_group_id, priority);
+	self.buf.push(token::begin_wrap_group(self.next_group_id, priority));
 	return self.next_group_id;
+}
+
+fn void C3Fmt.indent(&self)
+{
+	self.indent_level++;
+	self.buf.push(token::indent());
+}
+
+fn void C3Fmt.dedent(&self)
+{
+	if (self.indent_level > 0)
+	{
+		self.indent_level--;
+	}
+	self.buf.push(token::dedent());
+}
+
+fn usz C3Fmt.current_column(&self)
+{
+	usz col = (usz)self.indent_level * (self.config.use_tabs ? self.config.tab_size : self.config.indent_width);
+
+	// Scan backwards for current line tokens
+	int i = (int)self.buf.len() - 1;
+	while (i >= 0 && self.buf[i].kind != NEWLINE)
+	{
+		if (self.buf[i].kind == ALIGN)
+		{
+			if (self.buf[i].align_col > col)
+			{
+				col = self.buf[i].align_col;
+			}
+		}
+		else
+		{
+			col += self.buf[i].len();
+		}
+		i--;
+	}
+	return col;
 }
 
 faultdef SOURCE_CODE_CONTAINS_ERROR;
@@ -142,7 +183,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 
 			if (repair_indent)
 			{
-				self.buf.indent();
+				self.indent();
 			}
 		}
 		else
@@ -155,7 +196,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 
 		if (popped_indent)
 		{
-			self.buf.dedent();
+			self.dedent();
 		}
 		return true;
 	}
@@ -165,11 +206,224 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 	{
 		self.process_comment(child);
 		self.buf.newline();
-		self.buf.dedent();
+		self.dedent();
 		return true;
 	}
 
 	return false;
+}
+
+faultdef NOT_FOUND;
+
+fn bool is_alignable_block_node(TSNode node)
+{
+	String type = node.type();
+	if (type == "declaration_stmt" || type == "global_declaration")
+	{
+		if (ts::node_named_child_count(node) == 0) return false;
+		TSNode inner = ts::node_named_child(node, 0);
+		String inner_type = inner.type();
+		return inner_type == "const_declaration" || inner_type == "var_declaration";
+	}
+	return type == "const_declaration" || type == "var_declaration";
+}
+
+fn TSNode find_assignment_op(TSNode node)
+{
+	TSNode target = node;
+	String type = node.type();
+	if (type == "declaration_stmt" || type == "global_declaration")
+	{
+		if (ts::node_named_child_count(node) == 0) return (TSNode){};
+		target = ts::node_named_child(node, 0);
+	}
+
+	for (uint i = 0; i < ts::node_child_count(target); ++i)
+	{
+		TSNode c = ts::node_child(target, i);
+		if (c.type() == "=") return c;
+	}
+	return (TSNode){};
+}
+
+fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint end_index)
+{
+	usz max_op_col = 0;
+	usz max_comment_col = 0;
+
+	uint named_child_count = ts::node_named_child_count(parent);
+
+	// dry run to find columns
+	for (uint i = start_index; i < end_index; ++i)
+	{
+		TSNode child = ts::node_named_child(parent, i);
+		if (child.is_comment()) continue;
+
+		usz start_buf_len = self.buf.len();
+
+		TSNode op = find_assignment_op(child);
+		if (!ts::node_is_null(op))
+		{
+			// Format up to the '='
+			TSNode target = (child.type() == "declaration_stmt" || child.type() == "global_declaration") ? ts::node_named_child(child, 0) : child;
+
+			bool first = true;
+			for (uint k = 0; k < ts::node_child_count(target); ++k) {
+				TSNode c = ts::node_child(target, k);
+				if (ts::node_eq(c, op)) break;
+				if (ts::node_is_named(c)) {
+					if (!first) self.buf.push(token::space());
+					self.process_node(c);
+					first = false;
+				} else {
+					String t = c.get_text(self.source_code);
+					if (t == "const" || t == "var" || t == "static" || t == "pub") {
+						if (!first) self.buf.push(token::space());
+						self.buf.push(token::text(t));
+						first = false;
+					}
+				}
+			}
+			max_op_col = max(max_op_col, self.current_column());
+		}
+
+		// Reset and format whole node without trailing newline to find comment col
+		while (self.buf.len() > start_buf_len) (void)self.buf.pop();
+
+		if (child.type() == "declaration_stmt" || child.type() == "global_declaration")
+		{
+			// We need to NOT append newline here
+			self.process_composite(child, append_newline: false);
+		}
+		else
+		{
+			self.process_node(child, false);
+		}
+
+		if (i + 1 < named_child_count)
+		{
+			TSNode next = ts::node_named_child(parent, i + 1);
+			if (next.start_point_row() == child.end_point_row() && next.is_comment())
+			{
+				max_comment_col = max(max_comment_col, self.current_column());
+			}
+		}
+
+		while (self.buf.len() > start_buf_len) {
+			(void)self.buf.pop();
+		}
+	}
+
+	// Final pass
+	uint i = start_index;
+	while (i < end_index)
+	{
+		TSNode child = ts::node_named_child(parent, i);
+
+		int blank_line_amount = 0;
+		if (i > start_index)
+		{
+			TSNode sibling = ts::node_named_child(parent, i - 1);
+			blank_line_amount = (int)child.start_point_row() - (int)sibling.end_point_row();
+			for (int j = 0; j < blank_line_amount - 1; ++j) self.buf.push(token::newline());
+		}
+
+		TSNode op = find_assignment_op(child);
+		if (!ts::node_is_null(op))
+		{
+			TSNode target = (child.type() == "declaration_stmt" || child.type() == "global_declaration") ? ts::node_named_child(child, 0) : child;
+			TSNode right = target.get_child_with_field("right");
+
+			// Format until '='
+			uint k = 0;
+			bool first = true;
+			for (; k < ts::node_child_count(target); ++k) {
+				TSNode c = ts::node_child(target, k);
+				if (ts::node_eq(c, op)) break;
+				if (ts::node_is_named(c)) {
+					if (!first) self.buf.push(token::space());
+					self.process_node(c);
+					first = false;
+				} else {
+					String t = c.get_text(self.source_code);
+					if (t == "const" || t == "var" || t == "static" || t == "pub") {
+						if (!first) self.buf.push(token::space());
+						self.buf.push(token::text(t));
+						first = false;
+					}
+				}
+			}
+
+			self.buf.push(token::align(max_op_col));
+			self.buf.push(token::space());
+			self.buf.push(token::text("="));
+			self.buf.push(token::space());
+
+			// Value alignment logic for math signs
+			if (!ts::node_is_null(right)) {
+				String text = right.get_text(self.source_code);
+				bool has_negatives = false;
+				for (uint m = start_index; m < end_index; ++m) {
+					TSNode decl = ts::node_named_child(parent, m);
+					TSNode op2 = find_assignment_op(decl);
+					if (!ts::node_is_null(op2)) {
+						TSNode t2 = (decl.type() == "declaration_stmt" || decl.type() == "global_declaration") ? ts::node_named_child(decl, 0) : decl;
+						TSNode r2 = t2.get_child_with_field("right");
+						if (!ts::node_is_null(r2) && r2.get_text(self.source_code).starts_with("-")) {
+							has_negatives = true;
+							break;
+						}
+					}
+				}
+				if (has_negatives && !text.starts_with("-")) {
+					self.buf.push(token::space());
+				}
+				self.process_node(right);
+			}
+
+			// Format rest (normally just ';')
+			for (k++; k < ts::node_child_count(target); ++k) {
+				TSNode c = ts::node_child(target, k);
+				if (ts::node_eq(c, right)) continue;
+				if (c.type() == ";") {
+					self.buf.push(token::text(";"));
+				} else if (ts::node_is_named(c)) {
+					self.process_node(c);
+				}
+			}
+
+			// Semicolon of declaration_stmt if any
+			if (child.type() == "declaration_stmt" || child.type() == "global_declaration") {
+				for (uint s = 1; s < ts::node_child_count(child); ++s) {
+					TSNode sc = ts::node_child(child, s);
+					if (sc.type() == ";") self.buf.push(token::text(";"));
+				}
+			}
+
+			// Handle trailing comment alignment
+			if (i + 1 < named_child_count)
+			{
+				TSNode next = ts::node_named_child(parent, i + 1);
+				if (next.start_point_row() == child.end_point_row() && next.is_comment())
+				{
+					if (self.config.align_comments)
+					{
+						self.buf.push(token::align(max_comment_col));
+					}
+					self.buf.push(token::space());
+					self.process_comment(next);
+					i++; // Skip comment in next iteration
+				}
+			}
+
+			self.buf.push(token::newline());
+		}
+		else
+		{
+			self.process_node(child, true);
+		}
+		i++;
+	}
 }
 
 
@@ -182,7 +436,8 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 *>
 fn void C3Fmt.process_compound(&self, TSNode node)
 {
-	for (uint i = 0; i < ts::node_named_child_count(node); ++i)
+	uint named_child_count = ts::node_named_child_count(node);
+	for (uint i = 0; i < named_child_count; ++i)
 	{
 		TSNode child = ts::node_named_child(node, i);
 
@@ -207,6 +462,27 @@ fn void C3Fmt.process_compound(&self, TSNode node)
 		if (i > 0 && self.reattach_comment(child, blank_line_amount))
 		{
 			continue;
+		}
+
+		// Alignment logic
+		if (self.config.align_assignments && is_alignable_block_node(child))
+		{
+			uint j = i + 1;
+			while (j < named_child_count)
+			{
+				TSNode next = ts::node_named_child(node, j);
+				// If there's a blank line, it breaks the alignment block
+				if (next.start_point_row() - ts::node_named_child(node, j - 1).end_point_row() > 1) break;
+				if (!is_alignable_block_node(next) && !next.is_comment()) break;
+				j++;
+			}
+
+			if (j > i + 1)
+			{
+				self.process_aligned_block(node, i, j);
+				i = j - 1;
+				continue;
+			}
 		}
 
 		self.process_node(child, true);
@@ -405,7 +681,7 @@ fn void C3Fmt.process_uncanny_scope(
 					}
 				}
 				self.buf.newline();
-				self.buf.indent();
+				self.indent();
 			}
 		}
 		else
@@ -439,7 +715,7 @@ fn void C3Fmt.process_uncanny_scope(
 				assert (!ts::node_is_named(child));
 				// The only scope exit i know are $endif $endforeach etc...
 				// there are never named so we can just output text
-				self.buf.dedent();
+				self.dedent();
 				self.buf.text(child.get_text(self.source_code));
 				self.buf.newline();
 
@@ -469,7 +745,7 @@ fn void C3Fmt.process_uncanny_scope(
 			}
 		}
 	}
-	self.buf.dedent();
+	self.dedent();
 }
 
 <*
@@ -524,10 +800,10 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 						self.buf.newline();
 					}
 
-					self.buf.indent();
+					self.indent();
 					self.process_line_comment(child);
 					self.buf.newline();
-					self.buf.dedent();
+					self.dedent();
 
 					nl_appended = true;
 				}
@@ -544,9 +820,9 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 					{
 						self.buf.newline();
 					}
-					self.buf.indent();
+					self.indent();
 					self.process_node(child);
-					self.buf.dedent();
+					self.dedent();
 				}
 				else
 				{
@@ -612,7 +888,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 						self.buf.newline();
 						self.buf.text("{");
 						self.buf.newline();
-						self.buf.indent();
+						self.indent();
 						in_scope = true;
 						in_scope_id = i;
 
@@ -630,7 +906,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 		{
 			if (type == "}")
 			{
-				self.buf.dedent();
+				self.dedent();
 				self.buf.text("}");
 				self.buf.newline();
 
@@ -954,9 +1230,9 @@ fn void C3Fmt.process_node(
 					self.buf.newline();
 					self.buf.text("{");
 					self.buf.newline();
-					self.buf.indent();
+					self.indent();
 					self.process_compound(child);
-					self.buf.dedent();
+					self.dedent();
 					self.buf.text("}");
 				case "implies_body":
 					self.buf.space();
@@ -984,9 +1260,9 @@ fn void C3Fmt.process_node(
 			self.buf.newline();
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 		case "struct_member_declaration":
 			self.process_composite(node, append_newline: true);
@@ -1000,9 +1276,9 @@ fn void C3Fmt.process_node(
 			self.buf.newline();
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 		case "enum_constant":
 			self.process_composite(node);
@@ -1053,9 +1329,9 @@ fn void C3Fmt.process_node(
 			self.buf.newline();
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 		case "bitstruct_member_declaration":
 			self.process_composite(
@@ -1074,9 +1350,9 @@ fn void C3Fmt.process_node(
 			self.buf.newline();
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 		case "faultdef_declaration":
 			uint start_row = node.start_point().row;
@@ -1107,7 +1383,7 @@ fn void C3Fmt.process_node(
 					if (is_multi)
 					{
 						self.buf.newline();
-						self.buf.indent();
+						self.indent();
 					}
 					continue;
 				}
@@ -1117,7 +1393,7 @@ fn void C3Fmt.process_node(
 					if (is_multi)
 					{
 						self.buf.newline();
-						self.buf.dedent();
+						self.dedent();
 					}
 					self.buf.text(";");
 					self.buf.newline();
@@ -1434,9 +1710,9 @@ fn void C3Fmt.process_node(
 
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 
 			if (inside_compound)
@@ -1544,9 +1820,9 @@ fn void C3Fmt.process_node(
 			self.buf.newline();
 			self.buf.text("{");
 			self.buf.newline();
-			self.buf.indent();
+			self.indent();
 			self.process_compound(node);
-			self.buf.dedent();
+			self.dedent();
 			self.buf.text("}");
 		case "case_stmt":
 			self.process_uncanny_scope(node, ":");
@@ -1601,7 +1877,7 @@ fn void C3Fmt.process_node(
 		case "ct_if_cond":
 			self.process_sequence(node);
 		case "ct_else_stmt":
-			self.buf.dedent(); // restick
+			self.dedent(); // restick
 			self.process_uncanny_scope(node, scope_enter_type: "$else");
 			assert (self.buf.pop()!!.kind == DEDENT);
 		case "ct_for_stmt":
