@@ -26,8 +26,13 @@ fn String? format_string(
 module c3fmt::executable;
 
 import c3fmt;
-import std::io;
 import opt;
+import std::io;
+import std::thread;
+import std::os;
+import std::collections::list;
+
+alias FileList = List { String };
 
 struct CLIOptions
 {
@@ -44,6 +49,15 @@ CLIOptions cli_options;
 struct Context
 {
 	Config config;
+	thread::Mutex print_mu;
+}
+
+fn void format_worker(any[] args)
+{
+	String path = *(String*)args[0].ptr;
+	Config config = *(Config*)args[1].ptr;
+	Context* ctx = *(Context**)args[2].ptr;
+	(void)format_file(path, config, ctx);
 }
 
 fn int main(String[] args)
@@ -188,41 +202,67 @@ fn int main(String[] args)
 		cli_options.stdout = true;
 	}
 
-	Context ctx = { config };
+	Context ctx;
+	ctx.config = config;
+	ctx.print_mu.init()!!;
+	defer (void)ctx.print_mu.destroy();
+
+	FileList files;
+	files.init(mem);
+	defer {
+		foreach (f : files) f.free(mem);
+		files.free();
+	}
 
 	for (int i = arg_last_parsed; i < args.len; ++i)
 	{
 		String entry = args[i];
 		if (io::path::is_dir(io::path::temp(entry)!!))
 		{
-			io::path::traverse(io::path::temp(entry)!!, &format_callback, &ctx)!!;
+			io::path::traverse(io::path::temp(entry)!!, &collect_callback, &files)!!;
 		}
 		else
 		{
-			format_file(entry, config)!!;
+			files.push(entry.copy(mem));
 		}
 	}
+
+	if (files.len() == 0) return 0;
+
+	FixedThreadPool pool;
+	pool.init(os::num_cpu(), queue_size: files.len())!!;
+	defer (void)pool.destroy();
+
+	foreach (path : files)
+	{
+		pool.push(&format_worker, path, config, &ctx)!!;
+	}
+	pool.join();
+
 	return 0;
 }
 
-fn bool? format_callback(io::path::Path p, bool is_dir, any data)
+fn bool? collect_callback(io::path::Path p, bool is_dir, any data)
 {
 	if (is_dir) return false;
 	if (!p.has_extension("c3")) return false;
 
-	Context* ctx = (Context*)data;
-	format_file(p.str_view(), ctx.config)!!;
+	FileList* files = (FileList*)data;
+	files.push(p.str_view().copy(mem));
 	return false;
 }
 
-fn void? format_file(String path, Config config)
+
+fn void? format_file(String path, Config config, Context* ctx)
 {
 	String? content = (String)file::load(mem, path);
 	defer (void)content.free(mem);
 
 	if (catch excuse = content)
 	{
+		ctx.print_mu.lock();
 		io::eprintfn("Error: could not read file %s: %s", path, excuse);
+		ctx.print_mu.unlock();
 		return excuse~;
 	}
 
@@ -231,11 +271,13 @@ fn void? format_file(String path, Config config)
 
 	if (catch excuse = formatted)
 	{
+		ctx.print_mu.lock();
 		io::eprintfn(
 			"Error: could not format file %s: %s.",
 			path,
 			excuse
 		);
+		ctx.print_mu.unlock();
 		return excuse~;
 	}
 
@@ -243,18 +285,22 @@ fn void? format_file(String path, Config config)
 	{
 		if (catch excuse = file::save(path, formatted))
 		{
+			ctx.print_mu.lock();
 			io::eprintfn(
 				"Error: could not write to file %s: %s",
 				path,
 				excuse
 			);
+			ctx.print_mu.unlock();
 			return excuse~;
 		}
 	}
 
 	if (cli_options.stdout)
 	{
+		ctx.print_mu.lock();
 		io::printfn("%s", formatted);
+		ctx.print_mu.unlock();
 	}
 	return;
 }
