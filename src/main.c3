@@ -219,7 +219,10 @@ fn int main(String[] args)
 		String entry = args[i];
 		if (io::path::is_dir(io::path::temp(entry)!!))
 		{
-			io::path::traverse(io::path::temp(entry)!!, &collect_callback, &files)!!;
+			if (catch err = io::path::traverse(io::path::temp(entry)!!, &collect_callback, &files))
+			{
+				io::eprintfn("Warning: could not traverse directory %s: %s", entry, err);
+			}
 		}
 		else
 		{
