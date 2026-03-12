@@ -40,6 +40,10 @@ fn void struct_enum_bitstruct() @test {
     test("struct_enum_bitstruct", "test/corpus/struct_enum_bitstruct.c3", "test/corpus/struct_enum_bitstruct_f.c3");
 }
 
+fn void struct_nested_initializers() @test {
+    test("struct_nested_initializers", "test/corpus/struct_nested_initializers.c3", "test/corpus/struct_nested_initializers_f.c3");
+}
+
 fn void if_statements() @test {
     test("if_statements", "test/corpus/if_statements.c3", "test/corpus/if_statements_f.c3");
 }

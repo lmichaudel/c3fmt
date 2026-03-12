@@ -84,5 +84,5 @@ The test suite includes:
 
 ## Known issues
 
-- Initializers (nested struct initializers like `.x.y = 34`): this fail
+*(none yet)*
 
