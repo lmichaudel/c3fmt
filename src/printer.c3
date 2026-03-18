@@ -212,13 +212,13 @@ fn void C3Fmt.print(&self)
 		i++;
 	}
 
+	usz current_line_indent = indent_level;
 	for (usz j = i; j < token_count; ++j)
 	{
 		switch (self.buf[j].kind)
 		{
 			case NEWLINE:
-				assert (i <= j);
-				self.print_line(self.buf.array_view()[i..j], indent_level);
+				self.print_line(self.buf.array_view()[i..j], current_line_indent);
 				i = j + 1;
 				while (i < token_count && (self.buf[i].kind == INDENT || self.buf[i].kind == DEDENT))
 				{
@@ -233,10 +233,11 @@ fn void C3Fmt.print(&self)
 					}
 					i++;
 				}
+				current_line_indent = indent_level;
 				j = i - 1;
 			case EOF:
 				assert (i <= j);
-				self.print_line(self.buf.array_view()[i..j], indent_level);
+				self.print_line(self.buf.array_view()[i..j], current_line_indent);
 			case INDENT:
 				indent_level++;
 			case DEDENT:

@@ -64,8 +64,25 @@ fn void C3Fmt.dedent(&self)
 	if (self.indent_level > 0)
 	{
 		self.indent_level--;
+		self.buf.push(token::dedent());
 	}
-	self.buf.push(token::dedent());
+}
+
+fn Token? C3Fmt.pop_token(&self)
+{
+	Token? tok = self.buf.pop();
+	if (try t = tok)
+	{
+		if (t.kind == TokenKind.INDENT)
+		{
+			self.indent_level--;
+		}
+		else if (t.kind == TokenKind.DEDENT)
+		{
+			self.indent_level++;
+		}
+	}
+	return tok;
 }
 
 fn usz C3Fmt.current_column(&self)
@@ -159,7 +176,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 	{
 		if (last.kind == TokenKind.DEDENT)
 		{
-			(void)self.buf.pop();
+			(void)self.pop_token();
 			popped_indent = true;
 		}
 	}
@@ -174,13 +191,14 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 				if (popped_indent) self.dedent();
 				return false;
 			}
-			Token tok = self.buf.pop()!!;
+			Token tok = self.pop_token()!!;
 
 			if (tok.kind == TokenKind.INDENT)
 			{
 				if (!self.buf.gobble_last_newline())
 				{
 					self.buf.push(tok);
+					self.indent_level++;
 					if (popped_indent) self.dedent();
 					return false;
 				}
@@ -350,7 +368,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		}
 
 		// Reset and format whole node without trailing newline to find comment col
-		while (self.buf.len() > start_buf_len) (void)self.buf.pop();
+		while (self.buf.len() > start_buf_len) (void)self.pop_token();
 
 		if (child.type() == "declaration_stmt" || child.type() == "global_declaration")
 		{
@@ -372,7 +390,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		}
 
 		while (self.buf.len() > start_buf_len) {
-			(void)self.buf.pop();
+			(void)self.pop_token();
 		}
 	}
 
@@ -1212,11 +1230,28 @@ fn void C3Fmt.process_doc_comment(&self, TSNode node)
 
 fn void C3Fmt.collapse_single_line(&self, usz start_idx)
 {
+	usz total_len = self.buf.len();
+	if (total_len <= start_idx) return;
+
+	for (usz i = start_idx; i < total_len; i++)
+	{
+		Token t = self.buf[i];
+		if (t.kind == TokenKind.INDENT)
+		{
+			self.indent_level--;
+		}
+		else if (t.kind == TokenKind.DEDENT)
+		{
+			self.indent_level++;
+		}
+	}
+
 	bool last_was_space = false;
 	usz write_idx = start_idx;
-	for (usz read_idx = start_idx; read_idx < self.buf.len(); read_idx++)
+	for (usz read_idx = start_idx; read_idx < total_len; read_idx++)
 	{
 		Token t = self.buf[read_idx];
+
 		if (t.kind == NEWLINE || t.kind == INDENT || t.kind == DEDENT)
 		{
 			if (!last_was_space && write_idx > start_idx)
@@ -1236,7 +1271,10 @@ fn void C3Fmt.collapse_single_line(&self, usz start_idx)
 		}
 	}
 
-	while (self.buf.len() > write_idx) (void)self.buf.pop();
+	while (self.buf.len() > write_idx)
+	{
+		(void)self.buf.pop();
+	}
 	self.buf.push(token::newline());
 }
 
@@ -1267,18 +1305,18 @@ fn void C3Fmt.process_node(
 		case "func_declaration":
 			self.process_composite(
 				node,
-				skip_space_type: { ";", "func_param_list" },
+				skip_space_type: { ";", "func_param_list", "generic_param_list", "generic_arg_list" },
 			);
 		case "interface_func_declaration":
 			self.process_composite(
 				node,
-				skip_space_type: { ";", "func_param_list" },
+				skip_space_type: { ";", "func_param_list", "generic_param_list", "generic_arg_list" },
 				append_newline: true
 			);
 		case "func_definition":
 			self.process_composite(
 				node,
-				skip_space_type: { "func_param_list", "macro_func_body" },
+				skip_space_type: { "func_param_list", "macro_func_body", "generic_param_list", "generic_arg_list" },
 				append_newline: true
 			);
 		case "func_header":
@@ -1387,7 +1425,11 @@ fn void C3Fmt.process_node(
 		/* DECLARATION */
 		/* ======================================== */
 		case "struct_declaration":
-			self.process_composite(node, append_newline: true);
+			self.process_composite(
+				node,
+				skip_space_type: { "generic_param_list", "generic_arg_list" },
+				append_newline: true
+			);
 		case "struct_body":
 			self.buf.newline();
 			self.buf.text("{");
@@ -1399,9 +1441,17 @@ fn void C3Fmt.process_node(
 		case "struct_member_declaration":
 			self.process_composite(node, append_newline: true);
 		case "enum_declaration":
-			self.process_composite(node, append_newline: true);
+			self.process_composite(
+				node,
+				skip_space_type: { "generic_param_list", "generic_arg_list" },
+				append_newline: true
+			);
 		case "constdef_declaration":
-			self.process_composite(node, append_newline: true);
+			self.process_composite(
+				node,
+				skip_space_type: { "generic_param_list", "generic_arg_list" },
+				append_newline: true
+			);
 		case "enum_spec":
 			self.process_composite(node);
 		case "enum_body":
@@ -1456,7 +1506,11 @@ fn void C3Fmt.process_node(
 		case "enum_param":
 			self.process_composite(node);
 		case "bitstruct_declaration":
-			self.process_composite(node, append_newline: true);
+			self.process_composite(
+				node,
+				skip_space_type: { "generic_param_list", "generic_arg_list" },
+				append_newline: true
+			);
 		case "bitstruct_body":
 			self.buf.newline();
 			self.buf.text("{");
@@ -1591,7 +1645,7 @@ fn void C3Fmt.process_node(
 		case "func_signature":
 			self.process_composite(
 				node,
-				skip_space_type: { "func_param_list" }
+				skip_space_type: { "func_param_list", "generic_param_list", "generic_arg_list" }
 			);
 		case "var_declaration":
 			self.process_composite(node);
@@ -1654,7 +1708,7 @@ fn void C3Fmt.process_node(
 		case "catch_unwrap":
 			self.process_composite(node);
 		case "call_expr":
-			self.process_composite(node, skip_space_type: { "call_arg_list" });
+			self.process_composite(node, skip_space_type: { "call_arg_list", "generic_arg_list" });
 		case "call_arg_list":
 			if (node.has_child_of_type("call_arg"))
 			{
@@ -1778,9 +1832,9 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "(" }
 			);
 		case "trailing_generic_expr":
-			self.process_composite(node);
+			self.process_composite(node, skip_space_type: { "generic_arg_list" });
 		case "generic_type_ident":
-			self.process_composite(node);
+			self.process_composite(node, skip_space_type: { "generic_arg_list" });
 		case "generic_arg_list":
 			self.process_composite(
 				node,
@@ -2020,7 +2074,7 @@ fn void C3Fmt.process_node(
 			self.dedent(); // restick
 			self.process_uncanny_scope(node, scope_enter_type: "$else");
 			if (try t = self.buf.last()) {
-				if (t.kind == DEDENT) (void)self.buf.pop();
+				if (t.kind == DEDENT) (void)self.pop_token();
 			}
 		case "ct_for_stmt":
 			self.process_uncanny_scope(node, scope_exit_type: "$endfor");

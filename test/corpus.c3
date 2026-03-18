@@ -10,10 +10,10 @@ macro test($name, $input_path, $solution_path, Config config = c3fmt::default_co
 
     String raw_solution = (String)file::load(mem, $solution_path)!!;
     defer raw_solution.free(mem);
-    String solution = raw_solution.replace(mem, "\r", "");
+    String solution = raw_solution.replace(mem, "\r", "").trim();
     defer solution.free(mem);
 
-    String formatted = c3fmt::format_string(mem, input, config, check_semantic: true)!!;
+    String formatted = c3fmt::format_string(mem, input, config, check_semantic: true)!!.trim();
     defer formatted.free(mem);
 
     int len = solution.len;
@@ -66,4 +66,18 @@ fn void comments() @test {
     Config conf = c3fmt::default_config();
     conf.max_line_length = 80;
     test("comments", "test/corpus/comments.c3", "test/corpus/comments_f.c3", conf);
+}
+
+fn void alignment() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 180;
+    test("alignment", "test/corpus/alignment.c3", "test/corpus/alignment_f.c3", conf);
+}
+
+fn void indent_leak() @test {
+    test("indent_leak", "test/corpus/indent_leak.c3", "test/corpus/indent_leak_f.c3");
+}
+
+fn void generics() @test {
+    test("generics", "test/corpus/generics.c3", "test/corpus/generics_f.c3");
 }
