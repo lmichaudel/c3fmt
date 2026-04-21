@@ -252,12 +252,47 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 		return true;
 	}
 
-	if (popped_indent)
+	return false;
+}
+
+fn void C3Fmt.open_brace(&self, bool force_newline = false)
+{
+	if (self.config.brace_style == K_AND_R && !force_newline)
 	{
-		self.dedent(); // Revert
+		if (self.buf.gobble_last_newline())
+		{
+			self.buf.space();
+		}
+		else
+		{
+			Token? last = self.buf.last();
+			if (try l = last)
+			{
+				if (l.kind != TokenKind.SPACE)
+				{
+					self.buf.space();
+				}
+			}
+			else
+			{
+				self.buf.space();
+			}
+		}
+	}
+	else
+	{
+		self.buf.newline();
 	}
 
-	return false;
+	self.buf.text("{");
+	self.buf.newline();
+	self.indent();
+}
+
+fn void C3Fmt.close_brace(&self)
+{
+	self.dedent();
+	self.buf.text("}");
 }
 
 faultdef NOT_FOUND;
@@ -1005,10 +1040,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 					if (type == "{")
 					{
 						// TODO
-						self.buf.newline();
-						self.buf.text("{");
-						self.buf.newline();
-						self.indent();
+						self.open_brace();
 						in_scope = true;
 						in_scope_id = i;
 
@@ -1026,8 +1058,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 		{
 			if (type == "}")
 			{
-				self.dedent();
-				self.buf.text("}");
+				self.close_brace();
 				self.buf.newline();
 
 				return; // TODO assert we are finished
@@ -1397,13 +1428,9 @@ fn void C3Fmt.process_node(
 			switch (child.type())
 			{
 				case "compound_stmt":
-					self.buf.newline();
-					self.buf.text("{");
-					self.buf.newline();
-					self.indent();
+					self.open_brace();
 					self.process_compound(child);
-					self.dedent();
-					self.buf.text("}");
+					self.close_brace();
 				case "implies_body":
 					self.buf.space();
 					self.process_composite(node, append_newline: false);
@@ -1431,13 +1458,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "struct_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "struct_member_declaration":
 			self.process_composite(node, append_newline: true);
 		case "enum_declaration":
@@ -1455,13 +1478,9 @@ fn void C3Fmt.process_node(
 		case "enum_spec":
 			self.process_composite(node);
 		case "enum_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "enum_constant":
 			self.process_composite(node);
 
@@ -1512,13 +1531,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "bitstruct_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "bitstruct_member_declaration":
 			self.process_composite(
 				node,
@@ -1533,13 +1548,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "interface_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "faultdef_declaration":
 			uint start_row = node.start_point().row;
 			for (uint i = 0; i < ts::node_child_count(node); ++i)
@@ -1897,19 +1908,9 @@ fn void C3Fmt.process_node(
 		/* STATEMENTS & CONTROL FLOW */
 		/* ======================================== */
 		case "compound_stmt":
-			if (!inside_compound)
-			{
-				// shitty workaround to handle compound stmt
-				// for scope decl
-				self.buf.newline();
-			}
-
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace(force_newline: inside_compound);
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 
 			if (inside_compound)
 			{
@@ -2013,13 +2014,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "switch_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "case_stmt":
 			self.process_uncanny_scope(node, ":");
 		case "default_stmt":
