@@ -355,9 +355,9 @@ fn void? format_file(String path, Config config, Context* ctx)
 					io::eprintfn("Format mismatch: %s", path);
 
 					// Show diff if possible
-					if (try p = process::create({"diff", "--unified=0", "-p", "--color=always", "--label", path, "--label", "formatted", path, "-"}, { .search_user_path = true }))
+					if (try p = process::spawn({"diff", "--unified=0", "-p", "--color=always", "--label", path, "--label", "formatted", path, "-"}))
 					{
-						(void)p.write_to_stdin(formatted);
+						(void)p.write_stdin(formatted);
 						// Close stdin to signal end of input
 						libc::fclose(p.stdin_file);
 						p.stdin_file = null;
