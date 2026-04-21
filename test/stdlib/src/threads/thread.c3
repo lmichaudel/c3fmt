@@ -21,36 +21,44 @@ alias ThreadFn = fn int(void* arg);
 
 faultdef
 	INIT_FAILED,
+	INVALID_THREAD_SETTINGS,
 	LOCK_TIMEOUT,
 	WAIT_TIMEOUT,
 	THREAD_NOT_FOUND,
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
-faultdef
-	DETACH_FAILED @deprecated,
-	UNLOCK_FAILED @deprecated,
-	DESTROY_FAILED @deprecated,
-	SIGNAL_FAILED @deprecated,
-	JOIN_FAILED @deprecated,
-	LOCK_FAILED @deprecated,
-	WAIT_FAILED @deprecated;
+enum ThreadPriority
+{
+	DEFAULT,
+	BACKGROUND,
+	LOW,
+	NORMAL,
+	HIGH,
+	REALTIME,
+}
 
 macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
 macro bool Mutex.is_initialized(mutex) => ((NativeMutex*)&mutex).is_initialized();
 macro void? RecursiveMutex.init(&mutex) @maydiscard => NativeMutex.init((NativeMutex*)mutex, {.recursive});
-macro void? Mutex.destroy(&mutex) @maydiscard => NativeMutex.destroy((NativeMutex*)mutex); // Remove optional in 0.8.0
+macro void Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void? Mutex.lock(&mutex) @maydiscard => NativeMutex.lock((NativeMutex*)mutex);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
-macro void? Mutex.unlock(&mutex) @maydiscard => NativeMutex.unlock((NativeMutex*)mutex); // Remove optional in 0.8.0
+macro void Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
 
 macro void? TimedMutex.init(&mutex) => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed});
 macro void? TimedRecursiveMutex.init(&mutex) @maydiscard => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed, .recursive});
-macro void? TimedMutex.destroy(&mutex) @maydiscard => NativeTimedMutex.destroy((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
+macro void TimedMutex.destroy(&mutex) => NativeTimedMutex.destroy((NativeTimedMutex*)mutex);
 macro void? TimedMutex.lock(&mutex) @maydiscard => NativeTimedMutex.lock((NativeTimedMutex*)mutex);
-macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
-macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
-macro void? TimedMutex.unlock(&mutex) @maydiscard => NativeTimedMutex.unlock((NativeTimedMutex*)mutex); // Remove optional in 0.8.0
+macro void? TimedMutex.lock_timeout(&mutex, long ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
+macro bool TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
+macro void TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMutex*)mutex);
+
+struct ThreadSettings
+{
+	sz stack_size;
+	ThreadPriority priority;
+}
 
 macro void fence(AtomicOrdering $ordering) @safemacro
 {
@@ -97,10 +105,11 @@ macro void? ConditionVariable.wait_until(&cond, Mutex* mutex, Time time)
  Create and start a thread.
 
  @require thread_fn != null : "A non null thread function is required"
+ @return? thread::INIT_FAILED, thread::INVALID_THREAD_SETTINGS
 *>
-macro void? Thread.create(&thread, ThreadFn thread_fn, void* arg)
+macro void? Thread.create(&thread, ThreadFn thread_fn, void* arg, ThreadSettings settings = {})
 {
-	return NativeThread.create(thread, thread_fn, arg);
+	return NativeThread.create(thread, thread_fn, arg, settings);
 }
 
 macro void? Thread.detach(thread) @maydiscard => NativeThread.detach(thread);
@@ -110,16 +119,16 @@ macro void? Thread.detach(thread) @maydiscard => NativeThread.detach(thread);
 *>
 macro int? Thread.join(thread) @maydiscard => NativeThread.join(thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals(thread, other);
-
+macro bool Thread.set_priority(thread, ThreadPriority priority) => NativeThread.set_priority(&thread, priority);
 macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 
 macro void yield() => os::native_thread_yield();
 macro Thread current() => (Thread)os::native_thread_current();
 macro void exit(int result)
 {
-	allocator::destroy_temp_allocators();
+	allocators::destroy_temp_allocators();
 	os::native_thread_exit(result);
 }
 macro void? sleep(Duration d) @maydiscard => os::native_sleep_nano(d.to_nano());
-macro void? sleep_ms(ulong ms) @maydiscard  => sleep(time::ms(ms));
+macro void? sleep_ms(long ms) @maydiscard  => sleep(time::ms(ms));
 macro void? sleep_ns(NanoDuration ns) @maydiscard  => os::native_sleep_nano(ns);

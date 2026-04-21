@@ -16,18 +16,18 @@ fn char[HASH_BYTES] hash(char[] key, char[] message)
 
 <*
  @require output.len > 0 : "Output must be greater than zero"
- @require output.len < int.max / HASH_BYTES : "Output is too large"
+ @require output.len < int::max / HASH_BYTES : "Output is too large"
 *>
 fn void pbkdf2(char[] pw, char[] salt, uint iterations, char[] output)
 {
-	usz l = output.len / HASH_BYTES;
-	usz r = output.len % HASH_BYTES;
+	sz l = output.len / HASH_BYTES;
+	sz r = output.len % HASH_BYTES;
 
 	Hmac hmac;
 	hmac.init(pw);
 
 	char[] dst_curr = output;
-	for (usz i = 1; i <= l; i++)
+	for (sz i = 1; i <= l; i++)
 	{
 		@derive(&hmac, salt, iterations, i, dst_curr[:HASH_BYTES]);
 		dst_curr = dst_curr[HASH_BYTES..];
@@ -83,7 +83,7 @@ fn char[HASH_BYTES] Hmac.final(&self)
 const IPAD @private = 0x36;
 const OPAD @private = 0x5C;
 
-macro void @derive(Hmac *hmac_start, char[] salt, uint iterations, usz index, char[] out)
+macro void @derive(Hmac *hmac_start, char[] salt, uint iterations, sz index, char[] out)
 {
 	assert(out.len == HASH_BYTES);
 	char[HASH_BYTES] tmp @noinit;

@@ -179,7 +179,7 @@ fn void NativeTimedMutex.lock(&mtx)
  @require mtx.initialized : "Mutex was not initialized"
  @return? thread::WAIT_TIMEOUT
 *>
-fn void? NativeTimedMutex.lock_timeout(&mtx, ulong ms)
+fn void? NativeTimedMutex.lock_timeout(&mtx, long ms)
 {
 	Win32_DWORD current_thread = win32::getCurrentThreadId();
 	if (mtx.owner_thread == current_thread)
@@ -204,8 +204,8 @@ fn void? NativeTimedMutex.lock_timeout(&mtx, ulong ms)
 	Clock start = clock::now();
 	for (NanoDuration remaining = duration; remaining > time::NANO_DURATION_ZERO; remaining = duration - start.to_now())
 	{
-		ulong remaining_ms = remaining.to_ms();
-		if (remaining_ms > uint.max) remaining_ms = uint.max;
+		long remaining_ms = remaining.to_ms();
+		if (remaining_ms > int::max) remaining_ms = int::max;
 		_wait_cond_var(mtx, (uint)remaining_ms)!;
 		if (!mtx.locks)
 		{
@@ -325,7 +325,7 @@ fn void NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
 *>
 fn void? NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms) @inline
 {
-	if (ms > uint.max) ms = uint.max;
+	if (ms > uint::max) ms = uint::max;
 	if (!timedwait(cond, mtx, (uint)ms) @inline) return thread::WAIT_TIMEOUT~;
 }
 
@@ -337,7 +337,7 @@ fn void? NativeConditionVariable.wait_timeout_duration(&cond, NativeMutex* mtx, 
 {
 	if (duration < time::DURATION_ZERO) return thread::WAIT_TIMEOUT~;
 	long ms = duration.to_ms();
-	if (ms > uint.max) ms = uint.max;
+	if (ms > uint::max) ms = uint::max;
 	if (!timedwait(cond, mtx, (uint)ms) @inline) return thread::WAIT_TIMEOUT~;
 }
 
@@ -351,9 +351,25 @@ fn void? NativeConditionVariable.wait_until(&cond, NativeMutex* mtx, Time time) 
 	return cond.wait_timeout_duration(mtx, duration);
 }
 
-fn void? NativeThread.create(&thread, ThreadFn func, void* args)
+fn void? NativeThread.create(&thread, ThreadFn func, void* args, ThreadSettings settings)
 {
-	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED~;
+	NativeThread t = (NativeThread)win32::createThread(null, settings.stack_size, func, args, settings.stack_size > 0 ? win32::STACK_SIZE_PARAM_IS_A_RESERVATION : 0, null);
+	if (!t) return thread::INIT_FAILED~;
+	*thread = t;
+	if (settings.priority != DEFAULT) t.set_priority(settings.priority);
+}
+
+fn bool NativeThread.set_priority(&self, ThreadPriority priority)
+{
+	const int[ThreadPriority::len] TABLE = {
+		win32::THREAD_PRIORITY_NORMAL,
+		win32::THREAD_PRIORITY_IDLE,
+		win32::THREAD_PRIORITY_BELOW_NORMAL,
+		win32::THREAD_PRIORITY_NORMAL,
+		win32::THREAD_PRIORITY_ABOVE_NORMAL,
+		win32::THREAD_PRIORITY_TIME_CRITICAL
+	};
+	return (bool)win32::setThreadPriority(*self, TABLE[priority.ordinal - 1]);
 }
 
 fn void NativeThread.detach(thread) @inline
@@ -389,10 +405,10 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 fn int NativeThread.join(thread)
 {
 	uint res;
-	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) unreachable("Failed to join thread, received wait failed.");
-	if (!win32::getExitCodeThread(thread, &res)) unreachable("Failed to retrieve exit code when joining.");
+	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) abort("Failed to join thread, received wait failed.");
+	if (!win32::getExitCodeThread(thread, &res)) abort("Failed to retrieve exit code when joining.");
 	defer win32::closeHandle(thread);
-	return res;
+	return (int)res;
 }
 
 fn NativeThread native_thread_current()
@@ -409,6 +425,6 @@ fn void? native_sleep_nano(NanoDuration ns)
 {
 	long ms = ns.to_ms();
 	if (ms <= 0) return;
-	if (ms > Win32_DWORD.max) ms = Win32_DWORD.max;
+	if (ms > Win32_DWORD::max) ms = Win32_DWORD::max;
 	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return thread::INTERRUPTED~;
 }

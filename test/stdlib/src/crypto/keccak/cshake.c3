@@ -74,7 +74,7 @@ macro void xof_into($security_level, char[] into, char[] data, String customizer
 
  @require @in(SECURITY_LEVEL, ...USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct CShake <SECURITY_LEVEL>
+struct CShake <SECURITY_LEVEL> @mustinit
 {
 	inline Shake{SECURITY_LEVEL} under;
 }
@@ -90,7 +90,7 @@ struct CShake <SECURITY_LEVEL>
 fn void CShake.init(&self, NistFunctionName function = NONE, String customizer = "",
 	char runtime_rounds = DEFAULT_ROUNDS, char runtime_delimiter = DEFAULT_DELIMITER)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	String function_name = function.customizer;
 
 	if (!customizer && !function_name)

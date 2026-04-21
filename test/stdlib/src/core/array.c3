@@ -6,7 +6,7 @@ import std::collections::pair, std::io;
 
  @param [in] array
  @param [in] element
- @require $kindof(array) == SLICE || $kindof(array) == ARRAY
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
 *>
 macro bool contains(array, element)
@@ -24,12 +24,13 @@ macro bool contains(array, element)
 
  @param [in] array
  @param [in] element
- @require $kindof(array) == SLICE || $kindof(array) == ARRAY
+ @require @kindof(array) == SLICE || @kindof(array) == ARRAY
  @require @typematch(array[0], element) : "array and element must have the same type"
+ @ensure return >= 0
  @return "the first index of the element"
  @return? NOT_FOUND
 *>
-macro usz? index_of(array, element)
+macro sz? index_of(array, element)
 {
 	foreach (i, &e : array)
 	{
@@ -48,16 +49,16 @@ macro usz? index_of(array, element)
  @param xlen : "The length of the slice in x, defaults to the length of the array"
  @param ylen : "The length of the slice in y, defaults to the length of the array"
  @return "A Slice2d from the array"
- @require $kindof(array_ptr) == POINTER
- @require $kindof(*array_ptr) == VECTOR || $kindof(*array_ptr) == ARRAY
- @require $kindof((*array_ptr)[0]) == VECTOR || $kindof((*array_ptr)[0]) == ARRAY
+ @require @kindof(array_ptr) == POINTER
+ @require @kindof(*array_ptr) == VECTOR || @kindof(*array_ptr) == ARRAY
+ @require @kindof((*array_ptr)[0]) == VECTOR || @kindof((*array_ptr)[0]) == ARRAY
 *>
 macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
-	if (xlen < 1) xlen = $typeof((*array_ptr)[0]).len + xlen;
-	if (ylen < 1) ylen = $typeof((*array_ptr)).len + ylen;
+	if (xlen < 1) xlen = $typeof((*array_ptr)[0])::len + xlen;
+	if (ylen < 1) ylen = $typeof((*array_ptr))::len + ylen;
 	var $ElementType = $typeof((*array_ptr)[0][0]);
-	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
+	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0])::len, y, ylen, x, xlen };
 }
 
 
@@ -66,10 +67,11 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 
  @param [in] array
  @param [in] element
+ @ensure return >= 0
  @return "the last index of the element"
  @return? NOT_FOUND
 *>
-macro usz? rindex_of(array, element)
+macro sz? rindex_of(array, element)
 {
 	foreach_r (i, &e : array)
 	{
@@ -84,23 +86,23 @@ macro usz? rindex_of(array, element)
 
  @param [in] arr1
  @param [in] arr2
- @param [&inout] allocator : "The allocator to use, default is the heap allocator"
- @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
- @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
+ @param [&inout] allocator : "The allocator to use"
+ @require @kindof(arr1) == SLICE || @kindof(arr1) == ARRAY
+ @require @kindof(arr2) == SLICE || @kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
 macro concat(Allocator allocator, arr1, arr2) @nodiscard
 {
 	var $Type = $typeof(arr1[0]);
-	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);
+	$Type[] result = alloc::alloc_array(allocator, $Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
-		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
+		mem::copy(result.ptr, &arr1[0], arr1.len * $Type::size, $Type::alignment, $Type::alignment);
 	}
 	if (arr2.len > 0)
 	{
-		mem::copy(&result[arr1.len], &arr2[0], arr2.len * $Type.sizeof, $Type.alignof, $Type.alignof);
+		mem::copy(&result[arr1.len], &arr2[0], arr2.len * $Type::size, $Type::alignment, $Type::alignment);
 	}
 	return result;
 }
@@ -111,8 +113,8 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
 
  @param [in] arr1
  @param [in] arr2
- @require $kindof(arr1) == SLICE || $kindof(arr1) == ARRAY
- @require $kindof(arr2) == SLICE || $kindof(arr2) == ARRAY
+ @require @kindof(arr1) == SLICE || @kindof(arr1) == ARRAY
+ @require @kindof(arr2) == SLICE || @kindof(arr2) == ARRAY
  @require @typematch(arr1[0], arr2[0]) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
@@ -192,7 +194,7 @@ macro @product(array, identity_value = 1)
 
 <*
  Applies a given predicate function to each element of an array and returns a new
- array of `usz` values, each element representing an index within the original array
+ array of `sz` values, each element representing an index within the original array
  where the predicate returned `true`.
 
  The `.len` value of the returned array can also be used to quickly identify how many
@@ -214,10 +216,10 @@ macro @product(array, identity_value = 1)
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
-macro usz[] @indices_of(Allocator allocator, array, #predicate)
+macro sz[] @indices_of(Allocator allocator, array, #predicate)
 {
-	usz[] results = allocator::new_array(allocator, usz, lengthof(array));
-	usz matches;
+	sz[] results = alloc::new_array(allocator, sz, lengthof(array));
+	sz matches;
 
 	$typefrom(@predicate_fn(array)) $predicate = #predicate;
 	foreach (index, element : array)
@@ -237,7 +239,7 @@ macro usz[] @indices_of(Allocator allocator, array, #predicate)
  @require @is_valid_list(array) : "Expected a valid list"
  @require $defined($typefrom(@predicate_fn(array)) p = #predicate)
 *>
-macro usz[] @tindices_of(array, #predicate)
+macro sz[] @tindices_of(array, #predicate)
 {
 	return @indices_of(tmem, array, #predicate);
 }
@@ -266,12 +268,12 @@ macro @filter(Allocator allocator, array, #predicate) @nodiscard
 {
 	var $InnerType = $typeof(array[0]);
 
-	usz[] matched_indices = @indices_of(allocator, array, #predicate);
-	defer allocator::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
+	sz[] matched_indices = @indices_of(allocator, array, #predicate);
+	defer alloc::free(allocator, matched_indices.ptr);   // can free this upon leaving this call
 
 	if (!matched_indices.len) return ($InnerType[]){};
 
-	$InnerType[] result = allocator::new_array(allocator, $InnerType, matched_indices.len);
+	$InnerType[] result = alloc::new_array(allocator, $InnerType, matched_indices.len);
 
 	foreach (i, index : matched_indices) result[i] = array[index];
 
@@ -367,9 +369,9 @@ macro odd(Allocator allocator, array)
 *>
 fn Type[] unlace_impl(Allocator allocator, Type[] array) <Type> @private
 {
-	usz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
+	sz new_len = array.len / 2 + (array.len % 2 == 0 ? 0 : 1);
 	if (new_len == 0) return (Type[]){};
-	Type[] new_array = allocator::new_array(allocator, Type, new_len);
+	Type[] new_array = alloc::new_array(allocator, Type, new_len);
 	foreach (x, &new : new_array) *new = types::implements_copy(Type) ??? array[x * 2].copy(allocator) : array[x * 2];
 	return new_array[:new_len];
 }
@@ -444,7 +446,7 @@ macro unlace(Allocator allocator, array, left, right)
  where the `left` array is the shorter iterable, will put 7 into that lambda in each place
  where `left` is being filled in during the zip operation.
 
- @param [&inout] allocator : "The allocator to use; default is the heap allocator."
+ @param [&inout] allocator : "The allocator to use."
  @param [in] left : "The left-side array. These items will be placed as the First in each Pair"
  @param [in] right : "The right-side array. These items will be placed as the Second in each Pair"
  @param #operation : "The function to apply. Must have a signature of `$typeof(a) (a, b)`, where the type of 'a' and 'b' is the element type of left/right respectively."
@@ -462,15 +464,15 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 	var $Type = Pair { $LeftType, $RightType };
 	bool $is_op = $defined(#operation);
 	$if $is_op:
-		$Type = $typeof(#operation).returns;
+		$Type = $typeof(#operation)::returns;
 	$endif
 
-	usz left_len = lengthof(left);
-	usz right_len = lengthof(right);
+	sz left_len = lengthof(left);
+	sz right_len = lengthof(right);
 
 	$LeftType left_fill;
 	$RightType right_fill;
-	usz result_len = min(left_len, right_len);
+	sz result_len = min(left_len, right_len);
 	$if $defined(fill_with):
 		switch
 		{
@@ -493,7 +495,7 @@ macro @zip(Allocator allocator, left, right, #operation = ..., fill_with = ...) 
 
 	if (result_len == 0) return ($Type[]){};
 
-	$Type[] result = allocator::alloc_array(allocator, $Type, result_len);
+	$Type[] result = alloc::alloc_array(allocator, $Type, result_len);
 
 	foreach (idx, &item : result)
 	{
@@ -576,12 +578,12 @@ module std::core::array @private;
 
 macro typeid @predicate_fn(#array) @const
 {
-	return $typeof(fn bool ($typeof(#array[0]) a, usz index = 0) => true).typeid;
+	return $typeof(fn bool ($typeof(#array[0]) a, sz index = 0) => true)::typeid;
 }
 
 macro typeid @reduce_fn(#array, #identity) @const
 {
-	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, usz index = 0) => i);
+	return @typeid(fn $typeof(#identity) ($typeof(#identity) i, $typeof(#array[0]) a, sz index = 0) => i);
 }
 
 macro typeid @zip_into_fn(#left, #right) @const
@@ -594,7 +596,7 @@ macro bool @is_valid_operation(#left, #right, #operation = ...) @const
 	$switch:
 		$case !$defined(#operation):
 			return true;
-		$case $kindof(#operation) != FUNC:
+		$case @kindof(#operation) != FUNC:
 			return false;
 		$default:
 			return $defined(#operation(#left[0], #right[0]));
@@ -611,8 +613,8 @@ macro bool @is_valid_fill(left, right, fill_with = ...)
 	$if !$defined(fill_with):
 		return true;
 	$else
-		usz left_len = lengthof(left);
-		usz right_len = lengthof(right);
+		sz left_len = lengthof(left);
+		sz right_len = lengthof(right);
 		if (left_len == right_len) return true;
 		return left_len > right_len ? $defined(($typeof(right[0]))fill_with) : $defined(($typeof(left[0]))fill_with);
 	$endif

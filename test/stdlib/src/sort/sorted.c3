@@ -10,16 +10,16 @@ module std::sort;
 macro bool is_sorted(list, cmp = ..., ctx = ...) @builtin
 {
 	// When the context or cmp functions are not defined, we can simply use a dummy/default type.
-	const LIST_IS_REF = $kindof(list) == POINTER;
+	const LIST_IS_REF = @kindof(list) == POINTER;
 	var $Type = !LIST_IS_REF ??? $typeof(list) : $typeof(*list);
 
-	usz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
+	sz len = !LIST_IS_REF ??? lengthof(list) : lengthof(*list);
 	if (len <= 1) return true;
 
 	bool is_sorted = false;
 	if CHECK_SORT: (true)
 	{
-		usz i = 0;
+		sz i = 0;
 		int sort_order;
 		// determine sort order (ascending or descending)
 		for (; i < (len - 1) && sort_order == 0; i++)
@@ -45,10 +45,10 @@ macro bool is_sorted(list, cmp = ..., ctx = ...) @builtin
 
 macro int @sort_cmp(list_maybe_ref, pos, cmp = ..., ctx = ...) @local
 {
-	var list = $kindof(list_maybe_ref) != POINTER ??? list_maybe_ref : *list_maybe_ref;
+	var list = @kindof(list_maybe_ref) != POINTER ??? list_maybe_ref : *list_maybe_ref;
 	var $has_cmp = $defined(cmp);
 	var $has_context = $defined(ctx);
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom($typeof(cmp).paramsof[0].type) v = list[0]);
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom($typeof(cmp)::params[0].type) v = list[0]);
 
 	var a = list[pos];
 	var b = list[pos+1];

@@ -1,13 +1,13 @@
 module std::time;
 import std::io, std::time::os;
 
-typedef Time @structlike = long;
-typedef Duration @structlike = long;
-typedef Clock @structlike = ulong;
-typedef NanoDuration (Printable) @structlike = long;
+typedef Time = long;
+typedef Duration = long;
+typedef Clock = ulong;
+typedef NanoDuration (Printable) = long;
 
-const Time FAR_FUTURE = (Time)long.max;
-const Time FAR_PAST = (Time)long.min;
+const Time FAR_FUTURE = (Time)long::max;
+const Time FAR_PAST = (Time)long::min;
 
 const NanoDuration NANO_DURATION_ZERO = (NanoDuration)0;
 const Duration US            = (Duration)1;
@@ -19,7 +19,7 @@ const Duration DAY           = (Duration)24 * HOUR;
 const Duration WEEK          = (Duration)7 * DAY;
 const Duration MONTH         = (Duration)30 * DAY;
 const Duration YEAR          = (Duration)36525 * DAY / 100;
-const Duration FOREVER       = (Duration)long.max;
+const Duration FOREVER       = (Duration)long::max;
 const Duration DURATION_ZERO = (Duration)0;
 
 fn Duration us(long l) @inline => l * US;
@@ -29,7 +29,7 @@ fn Duration min(long l) @inline => l * MIN;
 fn Duration hour(long l) @inline => l * HOUR;
 fn Duration from_float(double s) @inline => (Duration)(s * (double)SEC);
 
-struct DateTime
+struct DateTime (Printable)
 {
 	int usec;
 	char sec;
@@ -43,7 +43,7 @@ struct DateTime
 	Time time;
 }
 
-struct TzDateTime
+struct TzDateTime (Printable)
 {
 	inline DateTime date_time;
 	int gmt_offset;
@@ -103,7 +103,7 @@ fn double Time.to_seconds(time) => (long)time / (double)SEC;
 fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)((long)time - (long)other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
-fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
+fn double Time.diff_hours(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
 fn double Time.diff_days(time, Time other) => (long)time.diff_us(other) / (double)DAY;
 fn double Time.diff_weeks(time, Time other) => (long)time.diff_us(other) / (double)WEEK;
 
@@ -118,7 +118,7 @@ fn String NanoDuration.unit_str(&self, Allocator allocator, bool use_short_units
 {
 	static String[] units = { "nanoseconds", "microseconds", "milliseconds", "seconds" };
 	static String[] short_units = { "ns", "us", "ms", "s" }; // using Mu here causes spacing oddities, just using 'us'
-	usz units_idx = 0;
+	sz units_idx = 0;
 
 	double reduced_value = (double)*self;
 	for (; reduced_value > 1_000 && units_idx < units.len - 1; reduced_value /= 1_000, units_idx++);
@@ -137,7 +137,7 @@ fn String NanoDuration.tunit_str(&self, bool use_short_units = true)
 	return self.unit_str(tmem, use_short_units);
 }
 
-fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
+fn sz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
 	NanoDuration nd = *self;
 	if (nd == NANO_DURATION_ZERO)
