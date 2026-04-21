@@ -96,7 +96,7 @@ fn void stability() @test
     g_ctx.next_index.store(0);
     g_ctx.results = &results;
 
-    usz num_threads = os::num_cpu();
+    int num_threads = os::num_cpu();
     FixedThreadPool pool;
     pool.init(num_threads, num_threads)!!;
     defer pool.stop_and_destroy();
@@ -106,7 +106,7 @@ fn void stability() @test
         pool.push(&stability_worker_task)!!;
     }
 
-    pool.join()!!;
+    pool.join();
 
     defer io::printfn("Stability test result: %d formatted, %d skipped due to syntax errors, %d format errors",
 		results.formatted.load(), results.skipped.load(), results.errors.load());
