@@ -81,3 +81,10 @@ fn void indent_leak() @test {
 fn void generics() @test {
     test("generics", "test/corpus/generics.c3", "test/corpus/generics_f.c3");
 }
+
+fn void knr_braces() @test {
+    Config conf = c3fmt::default_config();
+    conf.brace_style = K_AND_R;
+    conf.else_on_newline = false;
+    test("knr_braces", "test/corpus/knr_braces.c3", "test/corpus/knr_braces_f.c3", conf);
+}
