@@ -2045,9 +2045,17 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "[" }
 			);
 		case "ct_assert_stmt":
+		case "ct_error_stmt":
 			self.process_composite(
 				node,
 				skip_space_type: { ";", ")", "," },
+				skip_space_if_after: { "(" },
+				append_newline: true
+			);
+		case "ct_expand_stmt":
+			self.process_composite(
+				node,
+				skip_space_type: { ";", ")" },
 				skip_space_if_after: { "(" },
 				append_newline: true
 			);
