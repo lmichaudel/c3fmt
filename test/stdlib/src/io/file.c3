@@ -7,7 +7,7 @@ struct File (InStream, OutStream)
 }
 
 module std::io::file;
-import libc, std::io::path, std::io::os;
+import libc, std::io::path, std::io::os, std::time;
 
 fn File? open(String filename, String mode)
 {
@@ -39,7 +39,7 @@ fn bool is_dir(String path)
 	return os::native_is_dir(path);
 }
 
-fn ulong? get_size(String path)
+fn long? get_size(String path)
 {
 	return os::native_file_size(path);
 }
@@ -49,7 +49,13 @@ fn void? set_modified_time(String path, Time_t time)
 	return os::native_set_modified_time(path, time);
 }
 
-fn void? delete(String filename)
+fn Time? last_modified(String filename)
+{
+	Time_t? seconds = os::native_get_modified_time(filename)!;
+	return (Time)(seconds * (Time_t)time::SEC);
+}
+
+fn void? delete(String filename) @maydiscard
 {
 	return os::native_remove(filename) @inline;
 }
@@ -66,16 +72,7 @@ fn void? File.reopen(&self, String filename, String mode)
 <*
  @require self.file != null
 *>
-fn usz? File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
-{
-	os::native_fseek(self.file, offset, (SeekOrigin)seek_mode.ordinal)!;
-	return (usz)os::native_ftell(self.file);
-}
-
-<*
- @require self.file != null
-*>
-fn void? File.set_cursor(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
+fn void? File.seek(&self, long offset, SeekOrigin whence = FROM_START) @dynamic
 {
 	return os::native_fseek(self.file, offset, whence);
 }
@@ -115,34 +112,34 @@ fn void? File.write_byte(&self, char c) @dynamic
 <*
  @param [&inout] self
 *>
-fn void? File.close(&self) @inline @dynamic
+fn void? File.close(&self) @inline @dynamic @maydiscard
 {
 	if (self.file && libc::fclose(self.file))
 	{
 		switch (libc::errno())
 		{
-			case errno::ECONNRESET:
-			case errno::EBADF: return io::FILE_NOT_VALID~;
-			case errno::EINTR: return io::INTERRUPTED~;
-			case errno::EDQUOT:
-			case errno::EFAULT:
-			case errno::EAGAIN:
-			case errno::EFBIG:
-			case errno::ENETDOWN:
-			case errno::ENETUNREACH:
-			case errno::ENOSPC:
-			case errno::EIO: return io::INCOMPLETE_WRITE~;
+			case ECONNRESET:
+			case EBADF: return io::FILE_NOT_VALID~;
+			case EINTR: return io::INTERRUPTED~;
+			case EDQUOT:
+			case EFAULT:
+			case EAGAIN:
+			case EFBIG:
+			case ENETDOWN:
+			case ENETUNREACH:
+			case ENOSPC:
+			case EIO: return io::INCOMPLETE_WRITE~;
 			default: return io::UNKNOWN_ERROR~;
 		}
 	}
 	self.file = null;
 }
 
-fn ulong? File.size(&self) @dynamic
+fn long? File.size(&self) @dynamic
 {
 	long curr = self.cursor()!;
-	defer (void)self.set_cursor(curr);
-	self.set_cursor(0, FROM_END)!;
+	defer (void)self.seek(curr);
+	self.seek(0, FROM_END)!;
 	return self.cursor()!;
 }
 
@@ -157,7 +154,7 @@ fn bool File.eof(&self) @inline
 <*
  @param [in] buffer
 *>
-fn usz? File.read(&self, char[] buffer) @dynamic
+fn sz? File.read(&self, char[] buffer) @dynamic
 {
 	return os::native_fread(self.file, buffer);
 }
@@ -166,7 +163,7 @@ fn usz? File.read(&self, char[] buffer) @dynamic
  @param [out] buffer
  @require self.file != null : `File must be initialized`
 *>
-fn usz? File.write(&self, char[] buffer) @dynamic
+fn sz? File.write(&self, char[] buffer) @dynamic
 {
 	return os::native_fwrite(self.file, buffer);
 }
@@ -201,7 +198,7 @@ fn char[]? load_buffer(String filename, char[] buffer)
 	defer (void)file.close();
 	long len = file.size()!;
 	if (len > buffer.len) return io::OVERFLOW~;
-	usz read = 0;
+	sz read = 0;
 	while (read < len)
 	{
 		read += file.read(buffer[read:len - read])!;
@@ -214,16 +211,16 @@ fn char[]? load(Allocator allocator, String filename)
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
-	ulong len = file.size()!;
-	if (len > usz.max) return io::OUT_OF_SPACE~;
-	char* data = allocator::malloc_try(allocator, (usz)len)!;
-	defer catch allocator::free(allocator, data);
-	usz read = 0;
-	while (read < (usz)len)
+	long len = file.size()!;
+	if (len > sz::max) return io::OUT_OF_SPACE~;
+	char* data = alloc::malloc_try(allocator, (sz)len)!;
+	defer catch alloc::free(allocator, data);
+	sz read = 0;
+	while (read < (sz)len)
 	{
-		read += file.read(data[read:(usz)len - read])!;
+		read += file.read(data[read:(sz)len - read])!;
 	}
-	return data[:(usz)len];
+	return data[:(sz)len];
 }
 
 fn char[]? load_path(Allocator allocator, Path path) => load(allocator, path.str_view());
@@ -238,7 +235,7 @@ fn void? save(String filename, char[] data)
 	defer (void)file.close();
 	while (data.len)
 	{
-		usz written = file.write(data)!;
+		sz written = file.write(data)!;
 		data = data[written..];
 	}
 }

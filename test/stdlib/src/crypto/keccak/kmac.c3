@@ -95,7 +95,7 @@ macro void xof_into($security_level, char[] into, char[] key, char[] data, Strin
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct KmacXOF <SECURITY_LEVEL>
+struct KmacXOF <SECURITY_LEVEL> @mustinit
 {
 	inline Kmac{SECURITY_LEVEL} k;
 }
@@ -108,7 +108,7 @@ struct KmacXOF <SECURITY_LEVEL>
 *>
 fn void KmacXOF.init(&self, char[] key, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.is_xof_mode = true;
 	self.k.init(key, customizer: customizer);
 }
@@ -118,7 +118,7 @@ fn void KmacXOF.init(&self, char[] key, String customizer = "")
 
  @require @in(SECURITY_LEVEL, ...cshake::USABLE_LEVELS) : "Shake and Shake-derived structures must use a valid security level."
 *>
-struct Kmac <SECURITY_LEVEL>
+struct Kmac <SECURITY_LEVEL> @mustinit
 {
 	inline CShake{SECURITY_LEVEL} c;
 	bool is_xof_mode;
@@ -132,7 +132,7 @@ struct Kmac <SECURITY_LEVEL>
 *>
 fn void Kmac.init(&self, char[] key, String customizer = "")
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.c.init(KMAC, customizer);
 
 	self.c.update(nist::encoded_rate_bytes(SECURITY_LEVEL));

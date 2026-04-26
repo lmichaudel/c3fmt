@@ -32,18 +32,38 @@ Options:
 
 ## Configuration
 
-`c3fmt` will try to find a `.c3fmt` format inside the working directory. You can also
-pass your own path to `c3fmt`, or force the default configuration.
+`c3fmt` will try to find a `.c3fmt` configuration file inside the working directory. You can also pass your own path to `c3fmt` using the `--config` flag, or force the default configuration with `--default`.
 
 You can look at [.c3fmt](.c3fmt) for the default configuration.
+
+### Available Options
+
+| Key | Description | Default |
+| --- | --- | --- |
+| `use_tabs` | Use tabs for indentation. | `true` |
+| `tab_size` | The width of a tab character. | `4` |
+| `indent_width` | The number of spaces to use for indentation (if `use_tabs` is false). | `4` |
+| `max_blank_line_between_statements` | Maximum number of blank lines to preserve between statements. | `2` |
+| `max_line_length` | Maximum line length before wrapping. | `120` |
+| `brace_style` | The brace style to use: `ALLMAN` or `K&R`. | `ALLMAN` |
+| `else_on_newline` | Whether to put `else` on a new line. | `true` |
+| `align_assignments` | Align `=` and `=>` in consecutive declarations/assignments. | `true` |
+| `align_comments` | Align trailing comments in consecutive lines. | `true` |
 ## Building
 
-Building requires the [C3 compiler](https://c3-lang.org/) and the [tree-sitter](https://github.com/tree-sitter/tree-sitter) SDK library.
+Building requires the [C3 compiler](https://c3-lang.org/) and the [tree-sitter](https://github.com/tree-sitter/tree-sitter) SDK library. For instructions on how to build and install the tree-sitter library, refer to the [tree-sitter getting started guide](https://tree-sitter.github.io/tree-sitter/using-parsers/1-getting-started.html).
 
 To build the executable:
 ```bash
 c3c build
 ```
+
+If the `tree-sitter` library is not in your system's default search path, you can specify the path using the `-L` flag:
+
+```bash
+c3c build -L /path/to/tree-sitter/lib
+```
+
 The binary will be located in `build/c3fmt`.
 
 ### Updating Sources
@@ -64,6 +84,11 @@ You can keep the project dependencies and test data up-to-date using the built-i
 Run all tests using the C3 compiler:
 ```bash
 c3c test
+```
+
+Just like with the build command, if `tree-sitter` is not in your search path, use the `-L` flag:
+```bash
+c3c test -L /path/to/tree-sitter/lib
 ```
 
 The test suite includes:

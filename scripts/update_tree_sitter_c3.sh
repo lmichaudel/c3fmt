@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-REF="${1:-main}"
+REF="${1:-c3-0.8}"
 REPO="https://github.com/c3lang/tree-sitter-c3"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -82,4 +82,8 @@ echo "Packing .c3l ..."
 
 # install
 cp "$STAGING/c3l/tree_sitter_c3.c3l" "$LIB_DIR/tree_sitter_c3.c3l"
+
+echo "Clearing compiler caches to ensure library reload ..."
+rm -rf "$SCRIPT_DIR/../build" "$HOME/.c3"
+
 echo "Done. lib/tree_sitter_c3.c3l updated from $REPO @ $REF"

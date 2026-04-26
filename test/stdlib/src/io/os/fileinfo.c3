@@ -13,49 +13,39 @@ fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 	{
 		switch (libc::errno())
 		{
-			case errno::EBADF:
-				return io::FILE_NOT_VALID~;
-			case errno::EFAULT:
-				unreachable("Invalid stat");
-			case errno::EIO:
-				return io::GENERAL_ERROR~;
-			case errno::EACCES:
-				return io::NO_PERMISSION~;
-			case errno::ELOOP:
-				return io::NO_PERMISSION~;
-			case errno::ENAMETOOLONG:
-				return io::NAME_TOO_LONG~;
-			case errno::ENOENT:
-				return io::FILE_NOT_FOUND~;
-			case errno::ENOTDIR:
-				return io::FILE_NOT_DIR~;
-			case errno::EOVERFLOW:
-				return io::GENERAL_ERROR~;
-			default:
-				return io::UNKNOWN_ERROR~;
+			case EBADF:        return io::FILE_NOT_VALID~;
+			case EFAULT:       unreachable("Invalid stat");
+			case EIO:          return io::GENERAL_ERROR~;
+			case EACCES:       return io::NO_PERMISSION~;
+			case ELOOP:        return io::NO_PERMISSION~;
+			case ENAMETOOLONG: return io::NAME_TOO_LONG~;
+			case ENOENT:       return io::FILE_NOT_FOUND~;
+			case ENOTDIR:      return io::FILE_NOT_DIR~;
+			case EOVERFLOW:    return io::GENERAL_ERROR~;
+			default:           return io::UNKNOWN_ERROR~;
 		}
 	}
 }
 
-fn usz? native_file_size(String path) @if(env::WIN32) => @pool()
+fn long? native_file_size(String path) @if(env::WIN32) => @pool()
 {
 	Win32_FILE_ATTRIBUTE_DATA data;
 	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 	Win32_LARGE_INTEGER size;
-	size.lowPart = data.nFileSizeLow;
-	size.highPart = data.nFileSizeHigh;
-	return (usz)size.quadPart;
+	size.lowPart = (Win32_DWORD)data.nFileSizeLow;
+	size.highPart = (Win32_LONG)data.nFileSizeHigh;
+	return (long)size.quadPart;
 }
 
-fn ulong? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN && !env::LINUX && !env::ANDROID && !env::BSD_FAMILY)
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
-	f.set_cursor(0, FROM_END)!;
+	f.seek(0, FROM_END)!;
 	return f.cursor();
 }
 
-fn ulong? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
+fn long? native_file_size(String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY)
 {
 	Stat stat;
 	native_stat(&stat, path)!;
@@ -116,4 +106,32 @@ fn bool native_is_dir(String path)
 	$endif
 }
 
-
+fn Time_t? native_get_modified_time(String path) => @pool()
+{
+	$switch:
+		$case env::WIN32:
+			Win32_FILE_ATTRIBUTE_DATA data;
+			if (!win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data))
+			{
+				return io::FILE_NOT_FOUND~;
+			};
+			ulong ticks = ((ulong)data.ftLastWriteTime.dwHighDateTime << 32) | data.ftLastWriteTime.dwLowDateTime;
+			return (Time_t)(ticks / 10_000_000UL - 11644473600UL);
+		$case env::DARWIN:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtimespec.s;
+		$case env::LINUX:
+		$case env::ANDROID:
+		$case env::NETBSD:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtime;
+		$case env::BSD_FAMILY:
+			Stat stat;
+			native_stat(&stat, path)!;
+			return stat.st_mtime.s;
+		$default:
+			return io::UNSUPPORTED_OPERATION~;
+	$endswitch
+}

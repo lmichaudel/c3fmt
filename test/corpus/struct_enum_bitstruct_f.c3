@@ -40,35 +40,35 @@ enum State : int
 
 enum State : int (String description)
 {
-	WAITING    = "waiting",
-	RUNNING    = "running",
-	TERMINATED = "ended"
+	WAITING    { "waiting" },
+	RUNNING    { "running" },
+	TERMINATED { "ended" }
 }
 
 enum State : int (String desc, bool active, Position pos)
 {
-	WAITING    = { "waiting", false, { 1, 2 } },
-	RUNNING    = { "running", true, { 12, 22 } },
-	TERMINATED = { "ended", false, { 0, 0 } }
+	WAITING    { "waiting", false, { 1, 2 } },
+	RUNNING    { "running", true, { 12, 22 } },
+	TERMINATED { "ended", false, { 0, 0 } }
 }
 
-enum KeyCode : const CInt
+enum KeyCode : Cint (Cint val)
 {
-	UNKNOWN   = 0,
-	RETURN    = 13,
-	ESCAPE    = 27,
-	BACKSPACE = 8,
-	TAB       = 9,
-	SPACE     = 32,
+	UNKNOWN   { 0 },
+	RETURN    { 13 },
+	ESCAPE    { 27 },
+	BACKSPACE { 8 },
+	TAB       { 9 },
+	SPACE     { 32 },
 	EXCLAIM,
 	QUOTEDBL,
 	HASH,
 }
 
-enum ConstInline : const inline String
+enum ConstInline : String
 {
-	A = "Hello",
-	B = "World",
+	A { "Hello" },
+	B { "World" },
 }
 
 State current_state = WAITING;

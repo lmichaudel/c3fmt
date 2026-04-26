@@ -19,21 +19,13 @@ struct AnyRaw
 struct SliceRaw
 {
 	void* ptr;
-	usz len;
+	sz len;
 }
 
-macro @enum_lookup($Type, #value, value)
+macro @enum_lookup($Type, $name, value)
 {
-	$foreach $val : $Type.values:
-		if ($val.#value == value) return $val;
-	$endforeach
-	return NOT_FOUND~;
-}
-
-macro @enum_lookup_new($Type, $name, value)
-{
-	$foreach $val : $Type.values:
-		if ($val.$eval($name) == value) return $val;
+	$foreach $val : $Type::values:
+		if ($val.$name == value) return $val;
 	$endforeach
 	return NOT_FOUND~;
 }

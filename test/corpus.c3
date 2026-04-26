@@ -81,3 +81,19 @@ fn void indent_leak() @test {
 fn void generics() @test {
     test("generics", "test/corpus/generics.c3", "test/corpus/generics_f.c3");
 }
+
+fn void knr_braces() @test {
+    Config conf = c3fmt::default_config();
+    conf.brace_style = K_AND_R;
+    test("knr_braces", "test/corpus/knr_braces.c3", "test/corpus/knr_braces_f.c3", conf);
+}
+
+fn void varargs() @test {
+    test("varargs", "test/corpus/varargs.c3", "test/corpus/varargs_f.c3");
+}
+
+fn void comment_indent() @test {
+    Config conf = c3fmt::default_config();
+    conf.align_comments = true;
+    test("comment_indent", "test/corpus/comment_indent.c3", "test/corpus/comment_indent_f.c3", conf);
+}

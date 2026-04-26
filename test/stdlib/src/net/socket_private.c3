@@ -32,13 +32,13 @@ fn bool last_error_is_delayed_connect()
 		$case env::WIN32:
 		switch (win32::wsaGetLastError())
 		{
-			case wsa::EWOULDBLOCK:
-			case wsa::EINPROGRESS: return true;
+			case EWOULDBLOCK:
+			case EINPROGRESS: return true;
 			default: return false;
 		}
 		$default:
 		Errno err = libc::errno();
-		return err == errno::EINPROGRESS || err == errno::EAGAIN || err == errno::EWOULDBLOCK;
+		return err == EINPROGRESS || err == EAGAIN || err == EWOULDBLOCK;
 	$endswitch
 }
 
@@ -75,12 +75,12 @@ fn Socket? connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			{
 				c = clock::now();
 			}
-			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, (PollEvent)0 };
+			Poll poll_request = { sockfd, ANY_WRITE, (PollEvent)0 };
 			if (!poll((&poll_request)[:1], timeout_left)!)
 			{
 				return CONNECTION_TIMED_OUT~;
 			}
-			if (poll_request.revents & POLL_EVENT_WRITE)
+			if (poll_request.revents & WRITE)
 			{
 				sockfd.set_non_blocking(false)!;
 				return new_socket(sockfd, ai);

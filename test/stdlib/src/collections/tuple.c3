@@ -7,7 +7,7 @@ struct Pair (Printable)
 	Type2 second;
 }
 
-fn usz? Pair.to_format(&self, Formatter* f) @dynamic
+fn sz? Pair.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("{ %s, %s }", self.first, self.second);
 }
@@ -39,7 +39,7 @@ struct Triple (Printable)
 	Type3 third;
 }
 
-fn usz? Triple.to_format(&self, Formatter* f) @dynamic
+fn sz? Triple.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("{ %s, %s, %s }", self.first, self.second, self.third);
 }
@@ -49,7 +49,7 @@ fn usz? Triple.to_format(&self, Formatter* f) @dynamic
  @param [&out] c
  @require $defined(*a = self.first) : "You cannot assign the first value to a"
  @require $defined(*b = self.second) : "You cannot assign the second value to b"
- @require $defined(*c = self.third) : "You cannot assign the second value to c"
+ @require $defined(*c = self.third) : "You cannot assign the third value to c"
 *>
 macro void Triple.unpack(&self, a, b, c)
 {
@@ -63,10 +63,3 @@ fn bool Triple.equal(self, Triple other) @operator(==) @if (types::has_equals(Ty
 	return self.first == other.first && self.second == other.second && self.third == other.third;
 }
 
-module std::collections::tuple <Type1, Type2>;
-
-struct Tuple @deprecated("Use 'Pair' instead")
-{
-	Type1 first;
-	Type2 second;
-}

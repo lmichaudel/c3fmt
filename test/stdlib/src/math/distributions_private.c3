@@ -5,7 +5,7 @@ import std::math::random;
 
 struct ConvergenceControl
 {
-	usz max_iter;
+	sz max_iter;
 	double epsilon;
 }
 
@@ -39,7 +39,7 @@ fn double binomial_coefficient(int n, int k)
 *>
 fn double ln_factorial(int n)
 {
-	if (n < 0) return double.nan;
+	if (n < 0) return double::nan;
 	if (n <= 1) return 0.0;
 	return math::lgamma((double)(n + 1));
 }
@@ -60,7 +60,7 @@ fn double beta_function(double a, double b)
 *>
 fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv = DEFAULT_CONV)
 {
-	if (x < 0.0 || x > 1.0) return double.nan;
+	if (x < 0.0 || x > 1.0) return double::nan;
 	if (x == 0.0) return 0.0;
 	if (x == 1.0) return 1.0;
 
@@ -77,8 +77,8 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 	double c = 1.0;
 	double d = 0.0;
 
-	usz m;
-	for (usz i = 0; i <= conv.max_iter; ++i)
+	sz m;
+	for (sz i = 0; i <= conv.max_iter; ++i)
 	{
 		m = i/2;
 
@@ -110,7 +110,7 @@ fn double incomplete_beta(double x, double a, double b, ConvergenceControl conv 
 		if (math::abs(1.0 - cd) < conv.epsilon) return front * (f - 1.0);
 	}
 
-	return double.nan; // Not convered.
+	return double::nan; // Not convered.
 }
 
 <*
@@ -124,7 +124,7 @@ fn double? bisection_search(ContinuousDistribution dist, double low, double high
 	while (dist.cdf(high) < p) high *= 2.0;
 
 	// Bisection search.
-	for (usz i = 0; i < conv.max_iter; i++)
+	for (sz i = 0; i < conv.max_iter; i++)
 	{
 		double mid = (low + high) * 0.5;
 		if (high - low < conv.epsilon) return mid;
@@ -149,7 +149,7 @@ fn double? newton_raphson(ContinuousDistribution dist, double x, double p,
 	ConvergenceControl conv = DEFAULT_CONV)
 {
 	double delta, pdf;
-	for (usz i = 0; i < conv.max_iter; i++)
+	for (sz i = 0; i < conv.max_iter; i++)
 	{
 		pdf = dist.pdf(x);
 		if (pdf < 1e-300) break;
@@ -210,15 +210,15 @@ fn double inverse_erf(double x)
 {
 	if (x < -1 || x > 1)
 	{
-		return double.nan;
+		return double::nan;
 	}
 	else if (x == 1.0)
 	{
-		return double.inf;
+		return double::inf;
 	}
 	else if (x == -1.0)
 	{
-		return -double.inf;
+		return -double::inf;
 	}
 
 	const double LN2 = 6.931471805599453094172321214581e-1;
@@ -324,16 +324,16 @@ fn double inverse_erf(double x)
 fn double lower_incomplete_gamma(double s, double x)
 {
 	if (x == 0.0) return 0.0;
-	if (x == double.inf) return 1.0;
+	if (x == double::inf) return 1.0;
 
 	// Use series expansion for x < s+1
 	if (x < s + 1.0)
 	{
-	    return incomplete_gamma_series_expansion(s, x) ?? double.nan;
+	    return incomplete_gamma_series_expansion(s, x) ?? double::nan;
 	}
 	else
 	{
-		return 1.0 - incomplete_gamma_continued_fraction(s, x) ?? double.nan;
+		return 1.0 - incomplete_gamma_continued_fraction(s, x) ?? double::nan;
 	}
 }
 

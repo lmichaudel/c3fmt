@@ -216,7 +216,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 			}
 
 			self.buf.space();
-			self.process_comment(child);
+			self.process_comment(child, is_trailing: true);
 			self.buf.newline();
 
 			if (repair_indent)
@@ -232,7 +232,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 				return false;
 			}
 			self.buf.space();
-			self.process_comment(child);
+			self.process_comment(child, is_trailing: true);
 			self.buf.newline();
 		}
 
@@ -246,18 +246,53 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 	if (blank_line_amount == 1
 		&& popped_indent) // restick to previous uncanny stmt
 	{
-		self.process_comment(child);
+		self.process_comment(child, is_trailing: true);
 		self.buf.newline();
 		self.dedent();
 		return true;
 	}
 
-	if (popped_indent)
+	return false;
+}
+
+fn void C3Fmt.open_brace(&self, bool force_newline = false)
+{
+	if (self.config.brace_style == K_AND_R && !force_newline)
 	{
-		self.dedent(); // Revert
+		if (self.buf.gobble_last_newline())
+		{
+			self.buf.space();
+		}
+		else
+		{
+			Token? last = self.buf.last();
+			if (try l = last)
+			{
+				if (l.kind != TokenKind.SPACE)
+				{
+					self.buf.space();
+				}
+			}
+			else
+			{
+				self.buf.space();
+			}
+		}
+	}
+	else
+	{
+		self.buf.newline();
 	}
 
-	return false;
+	self.buf.text("{");
+	self.buf.newline();
+	self.indent();
+}
+
+fn void C3Fmt.close_brace(&self)
+{
+	self.dedent();
+	self.buf.text("}");
 }
 
 faultdef NOT_FOUND;
@@ -291,11 +326,10 @@ fn bool is_alignable_block_node(TSNode node)
 	if (type == "declaration_stmt" || type == "global_declaration")
 	{
 		if (ts::node_named_child_count(node) == 0) return false;
-		TSNode inner = ts::node_named_child(node, 0);
-		String inner_type = inner.type();
-		return inner_type == "const_declaration" || inner_type == "var_declaration";
+		node = ts::node_named_child(node, 0);
+		type = node.type();
 	}
-	return type == "const_declaration" || type == "var_declaration" || type == "macro_declaration" || type == "enum_constant";
+	return type == "const_declaration" || type == "var_declaration" || (type == "declaration" && node.start_point_row() == node.end_point_row()) || type == "enum_constant";
 }
 
 fn TSNode find_assignment_op(TSNode node)
@@ -467,10 +501,13 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 					continue;
 				}
 				if (ts::node_eq(c, right)) continue;
-				if (c.type() == ";") {
-					self.buf.push(token::text(";"));
-				} else if (ts::node_is_named(c)) {
-					self.process_node(c);
+				if (ts::node_is_named(c)) {
+					if (c.is_comment()) {
+						self.buf.push(token::space());
+						self.buf.push(token::text(c.get_text(self.source_code)));
+					} else {
+						self.process_node(c, false);
+					}
 				} else {
 					self.buf.push(token::text(c.get_text(self.source_code)));
 				}
@@ -480,7 +517,16 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			if (child.type() == "declaration_stmt" || child.type() == "global_declaration") {
 				for (uint s = 1; s < ts::node_child_count(child); ++s) {
 					TSNode sc = ts::node_child(child, s);
-					if (sc.type() == ";") self.buf.push(token::text(";"));
+					if (ts::node_is_named(sc)) {
+						if (sc.is_comment()) {
+							self.buf.push(token::space());
+							self.buf.push(token::text(sc.get_text(self.source_code)));
+						} else {
+							self.process_node(sc, false);
+						}
+					} else {
+						self.buf.push(token::text(sc.get_text(self.source_code)));
+					}
 				}
 			}
 
@@ -488,29 +534,29 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			{
 				self.buf.text(",");
 			}
-
-			// Handle trailing comment alignment
-			if (i + 1 < named_child_count)
-			{
-				TSNode next = ts::node_named_child(parent, i + 1);
-				if (next.start_point_row() == child.end_point_row() && next.is_comment())
-				{
-					if (self.config.align_comments)
-					{
-						self.buf.push(token::align(max_comment_col));
-					}
-					self.buf.push(token::space());
-					self.process_comment(next);
-					i++; // Skip comment in next iteration
-				}
-			}
-
-			self.buf.push(token::newline());
 		}
 		else
 		{
-			self.process_node(child, true);
+			self.process_node(child, false);
 		}
+
+		// Handle trailing comment alignment
+		if (i + 1 < named_child_count)
+		{
+			TSNode next = ts::node_named_child(parent, i + 1);
+			if (next.start_point_row() == child.end_point_row() && next.is_comment())
+			{
+				if (self.config.align_comments)
+				{
+					self.buf.push(token::align(max_comment_col));
+				}
+				self.buf.push(token::space());
+				self.process_comment(next, is_trailing: true);
+				i++; // Skip comment in next iteration
+			}
+		}
+
+		self.buf.push(token::newline());
 		i++;
 	}
 }
@@ -789,7 +835,7 @@ fn void C3Fmt.process_uncanny_scope(
 					if (next.is_comment() && ts::same_line(child, next))
 					{
 						self.buf.space();
-						self.process_comment(next);
+						self.process_comment(next, is_trailing: true);
 						i++; // advance
 					}
 				}
@@ -903,7 +949,7 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 					)) // as trailing
 				{
 					self.buf.space();
-					self.process_line_comment(child);
+					self.process_line_comment(child, is_trailing: true);
 					self.buf.newline();
 					nl_appended = true;
 				}
@@ -1005,10 +1051,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 					if (type == "{")
 					{
 						// TODO
-						self.buf.newline();
-						self.buf.text("{");
-						self.buf.newline();
-						self.indent();
+						self.open_brace();
 						in_scope = true;
 						in_scope_id = i;
 
@@ -1026,8 +1069,7 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 		{
 			if (type == "}")
 			{
-				self.dedent();
-				self.buf.text("}");
+				self.close_brace();
 				self.buf.newline();
 
 				return; // TODO assert we are finished
@@ -1090,7 +1132,7 @@ fn String C3Fmt.extract_comment_string(&self, TSNode comment)
  Pretty print a comment.
  @param node : "The processed node"
 *>
-fn void C3Fmt.process_comment(&self, TSNode node)
+fn void C3Fmt.process_comment(&self, TSNode node, bool is_trailing = false)
 {
 	assert (node.is_comment());
 
@@ -1100,7 +1142,7 @@ fn void C3Fmt.process_comment(&self, TSNode node)
 	}
 	if (node.type() == "line_comment")
 	{
-		self.process_line_comment(node);
+		self.process_line_comment(node, is_trailing);
 	}
 }
 
@@ -1131,14 +1173,17 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
  Pretty print a block comment.
  @param node : "The processed node"
 *>
-fn void C3Fmt.process_line_comment(&self, TSNode node)
+fn void C3Fmt.process_line_comment(&self, TSNode node, bool is_trailing = false)
 {
-	TSNode content = ts::node_named_child(node, 0);
-
 	self.buf.text(node.get_text(self.source_code)[0:2]);
+	// Trailing comments (on same line as code): normalize to single space.
+	// Standalone comments (own line): preserve internal indentation after the separator space.
+	String body = is_trailing
+		? self.extract_comment_string(node)
+		: node.get_text(self.source_code)[2..].strip_prefix(" ").trim_right();
 	self.buf.space();
-	String comment = self.extract_comment_string(node);
-	self.buf.text(comment);
+	self.buf.text(body);
+	String comment = body.trim();
 
 	if (comment == "c3fmt on")
 	{
@@ -1344,7 +1389,35 @@ fn void C3Fmt.process_node(
 				}
 			}, group_id: id);
 		case "param":
-			self.process_composite(node, skip_space_if_after: { "&" },);
+			// Special handling for "...":
+			// - Typed:   "int ...args"  (space before "...", no space after)
+			// - Untyped: "args..."       (no space before "...", nothing after)
+			for (uint i = 0; i < ts::node_child_count(node); ++i)
+			{
+				TSNode child = ts::node_child(node, i);
+				String type = child.type();
+				String prev_type = i > 0 ? ts::node_child(node, i - 1).type() : "";
+				String prev_field = i > 0 ? ts::node_child(node, i - 1).field_name() : "";
+
+				if (i > 0 && type != "..." && prev_type != "..." && type != "&" && prev_type != "&")
+				{
+					self.buf.space();
+				}
+				if (type == "..." && prev_field == "type") self.buf.space();
+
+				if (child.is_comment())
+				{
+					self.process_comment(child);
+				}
+				else if (ts::node_is_named(child))
+				{
+					self.process_node(child);
+				}
+				else
+				{
+					self.buf.text(child.get_text(self.source_code));
+				}
+			}
 		case "param_default":
 			self.process_composite(node);
 		case "lambda_declaration":
@@ -1397,13 +1470,9 @@ fn void C3Fmt.process_node(
 			switch (child.type())
 			{
 				case "compound_stmt":
-					self.buf.newline();
-					self.buf.text("{");
-					self.buf.newline();
-					self.indent();
+					self.open_brace();
 					self.process_compound(child);
-					self.dedent();
-					self.buf.text("}");
+					self.close_brace();
 				case "implies_body":
 					self.buf.space();
 					self.process_composite(node, append_newline: false);
@@ -1431,13 +1500,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "struct_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "struct_member_declaration":
 			self.process_composite(node, append_newline: true);
 		case "enum_declaration":
@@ -1455,13 +1520,9 @@ fn void C3Fmt.process_node(
 		case "enum_spec":
 			self.process_composite(node);
 		case "enum_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "enum_constant":
 			self.process_composite(node);
 
@@ -1494,7 +1555,7 @@ fn void C3Fmt.process_node(
 				self.buf.text(",");
 			}
 
-			self.buf.newline();
+			if (inside_compound) self.buf.newline();
 		case "enum_arg":
 			self.process_composite(node);
 		case "enum_param_list":
@@ -1512,13 +1573,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "bitstruct_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "bitstruct_member_declaration":
 			self.process_composite(
 				node,
@@ -1533,13 +1590,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "interface_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "faultdef_declaration":
 			uint start_row = node.start_point().row;
 			for (uint i = 0; i < ts::node_child_count(node); ++i)
@@ -1848,7 +1901,7 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "<" },
 			);
 		case "initializer_element":
-			self.process_composite(node);
+			self.process_composite(node, skip_space_if_after: { "..." });
 		case "param_path":
 			self.process_sequence(node);
 		case "typed_initializer_list":
@@ -1897,19 +1950,9 @@ fn void C3Fmt.process_node(
 		/* STATEMENTS & CONTROL FLOW */
 		/* ======================================== */
 		case "compound_stmt":
-			if (!inside_compound)
-			{
-				// shitty workaround to handle compound stmt
-				// for scope decl
-				self.buf.newline();
-			}
-
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace(force_newline: inside_compound);
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 
 			if (inside_compound)
 			{
@@ -1998,7 +2041,7 @@ fn void C3Fmt.process_node(
 					&& !node.has_child_of_type("else_part")
 			);
 		case "else_part":
-			if (self.config.else_on_newline)
+			if (self.config.else_on_newline && self.config.brace_style != K_AND_R)
 			{
 				self.buf.newline();
 			}
@@ -2013,13 +2056,9 @@ fn void C3Fmt.process_node(
 				append_newline: true
 			);
 		case "switch_body":
-			self.buf.newline();
-			self.buf.text("{");
-			self.buf.newline();
-			self.indent();
+			self.open_brace();
 			self.process_compound(node);
-			self.dedent();
-			self.buf.text("}");
+			self.close_brace();
 		case "case_stmt":
 			self.process_uncanny_scope(node, ":");
 		case "default_stmt":
@@ -2045,9 +2084,17 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "[" }
 			);
 		case "ct_assert_stmt":
+		case "ct_error_stmt":
 			self.process_composite(
 				node,
 				skip_space_type: { ";", ")", "," },
+				skip_space_if_after: { "(" },
+				append_newline: true
+			);
+		case "ct_expand_stmt":
+			self.process_composite(
+				node,
+				skip_space_type: { ";", ")" },
 				skip_space_if_after: { "(" },
 				append_newline: true
 			);
@@ -2164,6 +2211,10 @@ fn void C3Fmt.process_node(
 
 		case "bytes_expr": // TODO idk what this is, a space separated list of bytes_literal ?
 		case "string_expr": // same...
+		case "lengthof":
+		case "$eval":
+		case "$stringify":
+		case "$reflect":
 			self.process_composite(node);
 
 		// Known for not working, waiting for https://github.com/c3lang/tree-sitter-c3/issues/50
@@ -2172,7 +2223,7 @@ fn void C3Fmt.process_node(
 			self.process_composite(node);
 		case "declaration_stmt":
 		case "global_declaration":
-			self.process_composite(node, append_newline: true);
+			self.process_composite(node, append_newline: inside_compound);
 
 		default:
 			io::eprintfn(

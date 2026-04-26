@@ -11,7 +11,7 @@ const char IPAD @local = 0x36;
 const char OPAD @local = 0x5c;
 
 <* Valid hash digest sizes; transparently equates to the valid Keccak security levels. *>
-const usz[] DIGEST_SIZES = keccak::SECURITY_LEVELS;
+const sz[] DIGEST_SIZES = keccak::SECURITY_LEVELS;
 
 <* The Keccak domain-separation delimiter to use specifically for SHA-3. *>
 const DEFAULT_DELIMITER = 0x06;
@@ -122,7 +122,7 @@ macro void simple_hmac_into($hash_bits, char[] into, char[] key, char[] data)
 
  @return "An array of `$outlen_bytes` bytes containing the hash."
 *>
-macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
+macro char[*] hmac($hash_bits, sz $tag_size, char[] key, char[] data)
 {
 	char[$tag_size] result @noinit;
 	hmac_into($hash_bits, result[..], key, data);
@@ -150,21 +150,24 @@ macro char[*] hmac($hash_bits, usz $tag_size, char[] key, char[] data)
 *>
 macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 {
-	usz $block_size = keccak::rate($hash_bits);
-	char[$block_size] k_prime;
-	if (key.len > $block_size)
+	(fn void(char[] into, char[] key, char[] data)
 	{
-		hash_into($hash_bits, k_prime[:$hash_bits / 8], key);
-	}
-	else
-	{
-		k_prime[:key.len] = key[..];
-	}
-	char[$block_size] _ipad @noinit; _ipad[..] = IPAD; array::@zip_into(_ipad[..], k_prime, fn (a, b) => a ^ b);
-	char[$block_size] _opad @noinit; _opad[..] = OPAD; array::@zip_into(_opad[..], k_prime, fn (a, b) => a ^ b);
+		sz $block_size = keccak::rate($hash_bits);
+		char[$block_size] k_prime;
+		if (key.len > $block_size)
+		{
+			hash_into($hash_bits, k_prime[:$hash_bits / 8], key);
+		}
+		else
+		{
+			k_prime[:key.len] = key[..];
+		}
+		char[$block_size] _ipad @noinit; _ipad[..] = IPAD; array::@zip_into(_ipad[..], k_prime, fn (a, b) => a ^ b);
+		char[$block_size] _opad @noinit; _opad[..] = OPAD; array::@zip_into(_opad[..], k_prime, fn (a, b) => a ^ b);
 
-	char[$hash_bits / 8] intermediate_ipad = simple_hmac($hash_bits, _ipad[..], data);
-	simple_hmac_into($hash_bits, into, _opad[..], intermediate_ipad[..]);
+		char[$hash_bits / 8] intermediate_ipad = simple_hmac($hash_bits, _ipad[..], data);
+		simple_hmac_into($hash_bits, into, _opad[..], intermediate_ipad[..]);
+	})(into, key, data);
 }
 
 <*
@@ -172,7 +175,7 @@ macro void hmac_into($hash_bits, char[] into, char[] key, char[] data)
 
  @require @in(HASH_BITS, ...DIGEST_SIZES) : "You must use a valid SHA-3 digest size."
 *>
-struct Sha3 <HASH_BITS>
+struct Sha3 <HASH_BITS> @mustinit
 {
 	inline Keccak{HASH_BITS} k;
 }
@@ -182,6 +185,6 @@ struct Sha3 <HASH_BITS>
 *>
 fn void Sha3.init(&self)
 {
-	keccak::@init_runtime_size(self, $sizeof(*self));
+	keccak::@init_runtime_size(self, @sizeof(*self));
 	self.k.init(runtime_delimiter: DEFAULT_DELIMITER);
 }

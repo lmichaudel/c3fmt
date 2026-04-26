@@ -114,7 +114,7 @@ fn void format_and_compile_std_lib() @test
     g_ctx.cwd_s = cwd_s;
     g_ctx.results = &results;
 
-    usz num_threads = os::num_cpu();
+    int num_threads = os::num_cpu();
     FixedThreadPool pool;
     pool.init(num_threads, num_threads)!!;
     defer pool.stop_and_destroy();
@@ -124,7 +124,7 @@ fn void format_and_compile_std_lib() @test
         pool.push(&stdlib_worker_task)!!;
     }
 
-    pool.join()!!;
+    pool.join();
 
     io::printfn("Stdlib    test result: %d formatted, %d skipped due to syntax errors.", results.formatted.load(), results.skipped.load());
 }

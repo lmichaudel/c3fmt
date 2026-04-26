@@ -4,36 +4,6 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
-
-<*
- EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
- way. It relies on the fact that distinct types are not implicitly convertible.
-
- You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
- the argument has been used or not.
-
- An example:
-
-```c3
-macro foo(a, #b = EMPTY_MACRO_SLOT)
-{
-	$if @is_valid_macro_slot(#b):
-		return invoke_foo2(a, #b);
-	$else
-		return invoke_foo1(a);
-	$endif
-}
-*>
-const EmptySlot EMPTY_MACRO_SLOT @builtin @deprecated("Use `#arg = ...` instead.") = null;
-
-typedef EmptySlot @constinit = void*;
-macro bool @is_empty_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) == EmptySlot;
-macro bool @is_valid_macro_slot(#arg) @const @builtin
-		@deprecated("Use `#arg = ...` to define an optional macro slot, and `$defined(#arg)` to detect whether the argument is set.")
-	=> $typeof(#arg) != EmptySlot;
-
 <*
  Returns a random value at compile time.
 
@@ -61,10 +31,16 @@ faultdef TYPE_MISMATCH @builtin;
  Use `CAPACITY_EXCEEDED` when trying to add to a bounded list or similar.
 */
 faultdef CAPACITY_EXCEEDED @builtin;
+
 /*
  Use `NOT_IMPLEMENTED` when something is conditionally available.
 */
 faultdef NOT_IMPLEMENTED @builtin;
+
+/*
+ Use `TIMEOUT` when some time or counter limit has been exceeded.
+*/
+faultdef TIMEOUT @builtin;
 
 alias VoidFn = fn void();
 
@@ -93,23 +69,23 @@ macro void @swap(#a, #b) @builtin
 	#b = temp;
 }
 
-macro usz bitsizeof($Type) @builtin @const => $Type.sizeof * 8u;
+macro sz bitsizeof($Type) @builtin @const => $Type::size * 8u;
 
-macro usz @bitsizeof(#expr) @builtin @const => $sizeof(#expr) * 8u;
+macro sz @bitsizeof(#expr) @builtin @const => @sizeof(#expr) * 8u;
 
 <*
  Compile-time check for whether a set of constants contains a certain expression.
 
- @param #needle : "The expression whose value should be located."
+ @param $needle : "The expression whose value should be located."
 *>
-macro bool @in(#needle, ...) @builtin @const
+macro bool @in($needle, ...) @builtin @const
 {
-    $for var $x = 0; $x < $vacount; $x++:
-        $assert $defined(#needle == $vaconst[$x])
-            : "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof(#needle), $typeof($vaconst[$x]);
-        $if #needle == $vaconst[$x]: return true; $endif
-    $endfor
-    return false;
+	$for var $x = 0; $x < $vacount; $x++:
+		$assert $defined($needle == $vaconst[$x])
+			: "Index %s: types '%s' (needle) and '%s' are not equatable", $x, $typeof($needle), $typeof($vaconst[$x]);
+		$if $needle == $vaconst[$x]: return true; $endif
+	$endfor
+	return false;
 }
 
 <*
@@ -123,7 +99,7 @@ macro bool @in(#needle, ...) @builtin @const
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type.typeid) return TYPE_MISMATCH~;
+	if (v.type != $Type::typeid) return TYPE_MISMATCH~;
 	return ($Type*)v.ptr;
 }
 
@@ -133,7 +109,7 @@ macro anycast(any v, $Type) @builtin
 *>
 macro any.to(self, $Type)
 {
-	if (self.type != $Type.typeid) return TYPE_MISMATCH~;
+	if (self.type != $Type::typeid) return TYPE_MISMATCH~;
 	return *($Type*)self.ptr;
 }
 
@@ -146,8 +122,6 @@ macro any.as(self, $Type)
 	return *($Type*)self.ptr;
 }
 
-macro bool @assignable_to(#foo, $Type) @const @builtin @deprecated("use '$defined($Type x = #foo)'") => $defined(*&&($Type){} = #foo);
-
 macro @addr(#val) @builtin
 {
 	$if $defined(&#val):
@@ -159,19 +133,82 @@ macro @addr(#val) @builtin
 
 macro typeid @typeid(#value) @const @builtin
 {
-	return $typeof(#value).typeid;
+	return $typeof(#value)::typeid;
 }
 
-macro TypeKind @typekind(#value) @const @builtin @deprecated("Use `$kindof(#value)`.")
+
+<*
+ Assert (always) that a condition is true. Otherwise call abort.
+
+ @param #value : "The expression to test"
+ @param $fmt : "The formatting string"
+ @param ... : "Arguments to the format string"
+*>
+macro void always_assert(bool #value, String $fmt = "", ...) @builtin @format(1) @safemacro
 {
-	return $kindof(#value);
+	bool val = #value;
+	if (@unlikely(!val))
+	{
+		$if $fmt == "":
+			abort(@sprintf("Violated assert '%s'.", $stringify(#value)));
+		$else
+			abort(@sprintf("Violated assert '%s': %s", $stringify(#value), $fmt), $vasplat);
+		$endif
+	}
 }
 
-macro bool @typeis(#value, $Type) @const @builtin @deprecated("Use `$typeof(#value) == $Type` instead.")
+<*
+ Determines whether all members of a struct/union type are trivially equatable (i.e., they all implement the `==` operator).
+
+ @require $defined($Type::members) : "Only types with members may be used here."
+*>
+macro bool may_member_eq($Type) @builtin @const
 {
-	return $typeof(#value).typeid == $Type.typeid;
+	bool $ret = false;
+	$Type $a, $b;
+	$foreach $member : $Type::members:
+		// Using |= here instead of `return false;` prevents this macro from generating many runtime return lines,
+		//   especially in the case that many of the struct fields meet this condition.
+		$ret = $ret ||| !$defined($member.get($a) == $member.get($b));
+	$endforeach
+	return !$ret;
 }
 
+<*
+ Compare two structs of the same type memberwise, using each member's `==` overload.
+ Importantly, this comparison _ignores_ an existing `==` overload for the struct type itself.
+
+ @require may_member_eq($typeof(left)) : "Only structs with members that are trivially equatable with `==` are supported."
+ @require @kindof(left) != POINTER && @kindof(right) != POINTER : "You cannot compare structures by reference. Dereference them first."
+ @require $typeof(left) == $typeof(right) : "Both input structures must be the same type."
+*>
+macro bool member_eq(left, right) @builtin
+{
+	bool res = true;
+	$foreach $member : $typeof(left)::members:
+		res = res && ($member.get(left) == $member.get(right));
+	$endforeach
+	return res;
+}
+
+fn int panic_print_backtrace_count(BacktraceList backtrace, int backtraces_to_ignore)
+{
+	bool inside_builtin_panic_skipped = true;
+	for (int i = backtraces_to_ignore; i < backtrace.len(); i++) {
+		switch (backtrace[i].function) {
+			case "std.core.builtin.print_backtrace":
+			case "std.core.builtin.default_panic":
+			case "std.core.builtin.panicf":
+				if (inside_builtin_panic_skipped) backtraces_to_ignore++;
+			case "__GI___sigaction":
+				backtraces_to_ignore = i + 1;
+			default:
+				inside_builtin_panic_skipped = false;
+				break;
+		}
+	}
+	return backtraces_to_ignore;
+}
 
 fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_backtrace = null) @if (env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
@@ -185,32 +222,55 @@ fn bool print_backtrace(String message, int backtraces_to_ignore, void *added_ba
 	{
 		BacktraceList? backtrace = backtrace::symbolize_backtrace(mem, backtraces);
 		if (catch backtrace) return false;
+
+		// Update ignore-count to also ignore the first traces from the panic functions
+		backtraces_to_ignore = panic_print_backtrace_count(backtrace, backtraces_to_ignore);
 		if (backtrace.len() <= backtraces_to_ignore) return false;
+
 		io::eprint("\nERROR: '");
 		io::eprint(message);
 		io::eprintn("'");
+
+		sz repetition_count;
 		foreach (i, &trace : backtrace)
 		{
 			if (i < backtraces_to_ignore) continue;
+			if (trace.has_file() && trace.file.ends_with("/lib/std/core/private/main_stub.c3")) {
+				break;
+			}
+
+			// Repeating backtraces (f.e. for max recursion depth) pretty print
+			if (i > 0 && *trace == backtrace[i-1]) {
+				if (i + 1 < backtrace.len() && *trace == backtrace[i+1]) {
+					repetition_count += 1;
+					continue;
+				} else if (repetition_count > 0) {
+					if (trace.is_unknown()) {
+						io::eprintfn("  ... (%s repetitions of ???)", repetition_count, trace.function);
+					} else {
+						io::eprintfn("  ... (%s repetitions of %s)", repetition_count, trace.function);
+					}
+				}
+			} else {
+				repetition_count = 0;
+			}
+
 			String inline_suffix = trace.is_inline ? " [inline]" : "";
-			if (trace.is_unknown())
+			switch
 			{
-				io::eprintfn("  in ???%s", inline_suffix);
-				continue;
+				case trace.is_unknown():
+					io::eprintfn("  in ???%s", inline_suffix);
+				case trace.has_file():
+					io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				default:
+					io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 			}
-			if (trace.has_file())
-			{
-				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-				continue;
-			}
-			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 	};
 	return true;
-
 }
 
-fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if(env::NATIVE_STACKTRACE)
 {
 	in_panic = true;
 	$if $defined(io::stderr) && env::PANIC_MSG:
@@ -231,7 +291,7 @@ macro void abort(String string = "Unrecoverable error reached", ...) @format(0) 
 
 bool in_panic @private = false;
 
-fn void default_panic(String message, String file, String function, uint line) @if (!env::NATIVE_STACKTRACE)
+fn void default_panic(String message, String file, String function, int line) @if (!env::NATIVE_STACKTRACE)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -250,11 +310,11 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 }
 
-alias PanicFn = fn void(String message, String file, String function, uint line);
+alias PanicFn = fn void(String message, String file, String function, int line);
 
 PanicFn panic = &default_panic;
 
-fn void panicf(String fmt, String file, String function, uint line, args...)
+fn void panicf(String fmt, String file, String function, int line, args...)
 {
 	$if $defined(io::stderr) && env::PANIC_MSG:
 		if (in_panic)
@@ -300,6 +360,15 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 }
 
 <*
+ @require $defined(uptr[] x = { $vasplat }) : "Arguments must be convertible to uptr"
+*>
+macro uptr @syscall(...) @builtin
+{
+	return $$syscall($vasplat);
+}
+
+
+<*
  Unconditionally break into an attached debugger when reached.
 *>
 macro void breakpoint() @builtin
@@ -329,16 +398,17 @@ macro any.as_inner(&self)
  @param expr : "the expression to cast"
  @param $Type : "the type to cast to"
 
- @require $sizeof(expr) == $Type.sizeof  : "Cannot bitcast between types of different size."
+ @require @sizeof(expr) == $Type::size  : "Cannot bitcast between types of different size."
  @ensure $typeof(return) == $Type*
 *>
 macro bitcast(expr, $Type) @builtin
 {
-	$if $Type.alignof <= $alignof(expr):
+	var $r = $reflect(expr);
+	$if $Type::alignment <= $r.alignment:
 		return *($Type*)&expr;
 	$else
 		$Type x @noinit;
-		$$memcpy(&x, &expr, $sizeof(expr), false, $Type.alignof, $alignof(expr));
+		$$memcpy(&x, &expr, @sizeof(expr), false, $Type::alignment, $r.alignment);
 		return x;
 	$endif
 }
@@ -346,36 +416,20 @@ macro bitcast(expr, $Type) @builtin
 <*
  @param $Type : `The type of the enum`
  @param [in] enum_name : `The name of the enum to search for`
- @require $Type.kindof == ENUM : `Only enums may be used`
+ @require $Type::kind == ENUM : `Only enums may be used`
  @ensure $typeof(return) == $Type*
  @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
-	typeid x = $Type.typeid;
+	typeid x = $Type::typeid;
 	foreach (i, name : x.names)
 	{
-		if (name == enum_name) return $Type.from_ordinal(i);
+		if (name == enum_name) return $Type::from_ordinal(i);
 	}
 	return NOT_FOUND~;
 }
 
-<*
- @param $Type : `The type of the enum`
- @require $Type.kindof == ENUM : `Only enums may be used`
- @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
- @require $defined($typeof(($Type){}.#value) v = value) : `Expected the value to match the type of the associated value`
- @ensure $typeof(return) == $Type*
- @return? NOT_FOUND
-*>
-macro @enum_from_value($Type, #value, value) @builtin @deprecated("Use Enum.lookup_field and Enum.lookup")
-{
-	foreach (e : $Type.values)
-	{
-		if (e.#value == value) return e;
-	}
-	return NOT_FOUND~;
-}
 
 <*
  Mark an expression as likely to be true
@@ -487,15 +541,15 @@ macro swizzle2(v, v2, ...) @builtin
  Returns the count of leading zero bits from an integer at compile-time.
 
  @require types::is_int($typeof($value)) : "Input value must be an integer"
- @require $sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
+ @require @sizeof($value) * 8 <= 128 : "Input value must be 128 bits wide or lower"
 *>
-macro uint @clz($value) @builtin @const
+macro int @clz($value) @builtin @const
 {
 	$if $value == 0:
-		return $sizeof($value) * 8;   // it's all leading zeroes
+		return (int)(@sizeof($value) * 8);   // it's all leading zeroes
 	$endif
 
-	usz $n = 0;
+	sz $n = 0;
 	uint128 $x = (uint128)$value;
 
 	$if $x <= 0x0000_0000_0000_0000_FFFF_FFFF_FFFF_FFFF: $n += 64; $x <<= 64; $endif
@@ -506,14 +560,14 @@ macro uint @clz($value) @builtin @const
 	$if $x <= 0x3FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 2;  $x <<= 2;  $endif
 	$if $x <= 0x7FFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF: $n += 1;             $endif
 
-	return $n % ($sizeof($value) * 8);   // mod by the bitsize of the input value to go back from uint128 -> it's-type
+	return (int)($n % (@sizeof($value) * 8));   // mod by the bitsize of the input value to go back from uint128 -> it's-type
 }
 
 <*
  Return the excuse in the Optional if it is Empty, otherwise
  return a null fault.
 
- @require $kindof(#expr) == OPTIONAL : `@catch expects an Optional value`
+ @require @kindof(#expr) == OPTIONAL : `@catch expects an Optional value`
 *>
 macro fault @catch(#expr) @builtin
 {
@@ -525,7 +579,7 @@ macro fault @catch(#expr) @builtin
  Check if an Optional expression holds a value or is empty, returning true
  if it has a value.
 
- @require $kindof(#expr) == OPTIONAL : `@ok expects an Optional value`
+ @require @kindof(#expr) == OPTIONAL : `@ok expects an Optional value`
 *>
 macro bool @ok(#expr) @builtin
 {
@@ -599,10 +653,10 @@ macro bool? @try_catch(#v, #expr, fault expected_fault) @builtin
  *>
 macro char[] @as_char_view(#value) @builtin
 {
-	return ((char*)&#value)[:$sizeof(#value)];
+	return ((char*)&#value)[:@sizeof(#value)];
 }
 
-macro isz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
+macro sz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
 macro String @str_upper(String $str) @builtin => $$str_upper($str);
 macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);
@@ -639,7 +693,7 @@ macro @generic_hash_core(h, value)
 macro uint @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
-	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:
+	$for var $cnt = 4; $cnt < @sizeof(value); $cnt += 4:
 		value >>= 32; // reduce value
 		h = @generic_hash_core(h, value);
 	$endfor
@@ -690,11 +744,11 @@ macro uint ZString.hash(ZString c) => (uint)a5hash::hash(c.str_view());
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 <*
- @require $kindof(array_ptr) == POINTER &&& $kindof(*array_ptr) == ARRAY
+ @require @kindof(array_ptr) == POINTER &&& @kindof(*array_ptr) == ARRAY
 *>
 macro uint hash_array(array_ptr) @local
 {
-	var $len = $sizeof(*array_ptr);
+	var $len = @sizeof(*array_ptr);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)array_ptr)[:$len]);
@@ -704,11 +758,11 @@ macro uint hash_array(array_ptr) @local
 }
 
 <*
- @require $kindof(vec) == VECTOR
+ @require @kindof(vec) == VECTOR
 *>
 macro uint hash_vec(vec) @local
 {
-	var $len = $sizeof(vec);
+	var $len = @sizeof(vec);
 
 	$if $len > 16:
 		return (uint)komi::hash(((char*)&&vec)[:$len]);
@@ -1002,14 +1056,14 @@ macro void* get_returnaddress(int n)
 
 fn String fault.short_name(self)
 {
-	String name = self.nameof;
+	String name = self.description;
 	return name[name.index_of("::") + 2..]!!;
 }
 
 
 macro String fault.@short_name($self) @const
 {
-	var $name = $self.nameof;
+	var $name = $self.description;
 	return $name[@str_find($name, "::") + 2..];
 }
 
@@ -1072,7 +1126,7 @@ char[64 * 1024] sig_stack @local @if(env::BACKTRACE && env::LINUX);
 // Clean this up
 fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 {
-	$if env::LINUX:
+	$if env::LINUX && !env::ADDRESS_SANITIZER:
 		Stack_t ss = {
 			.ss_sp = &sig_stack,
 			.ss_size = sig_stack.len

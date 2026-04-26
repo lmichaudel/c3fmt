@@ -24,32 +24,31 @@ struct LinkedHashSet (Printable)
 	LinkedEntry*[] table;
 	Allocator allocator;
 	<* Number of elements *>
-	usz count;
+	int count;
 	<* Resize limit *>
-	usz threshold;
+	int threshold;
 	float load_factor;
-	<* Resize limit *>
 	LinkedEntry* head;
 	<* First inserted LinkedEntry *>
 	LinkedEntry* tail;
 }
 
-fn usz LinkedHashSet.len(&self) @operator(len) => self.count;
+fn sz LinkedHashSet.len(&self) @operator(len) => self.count;
 
 <*
  @param [&inout] allocator : "The allocator to use"
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
-	self.threshold = (usz)(capacity * load_factor);
+	self.threshold = (int)(capacity * load_factor);
 	self.load_factor = load_factor;
-	self.table = allocator::new_array(allocator, LinkedEntry*, capacity);
+	self.table = alloc::new_array(allocator, LinkedEntry*, capacity);
 
 	self.head = null;
 	self.tail = null;
@@ -58,11 +57,11 @@ fn LinkedHashSet* LinkedHashSet.init(&self, Allocator allocator, usz capacity = 
 
 <*
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.tinit(&self, usz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashSet* LinkedHashSet.tinit(&self, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init(tmem, capacity, load_factor) @inline;
 }
@@ -70,11 +69,11 @@ fn LinkedHashSet* LinkedHashSet.tinit(&self, usz capacity = DEFAULT_INITIAL_CAPA
 <*
  @param [&inout] allocator : "The allocator to use"
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	$for var $i = 0; $i < $vacount; $i++:
@@ -85,11 +84,11 @@ macro LinkedHashSet* LinkedHashSet.init_with_values(&self, Allocator allocator, 
 
 <*
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
- @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
+ @require capacity <= MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_with_values(tmem, $vasplat, capacity: capacity, load_factor: load_factor);
 }
@@ -98,11 +97,11 @@ macro LinkedHashSet* LinkedHashSet.tinit_with_values(&self, ..., uint capacity =
  @param [in] values : "The values for the LinkedHashSet"
  @param [&inout] allocator : "The allocator to use"
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
 	foreach (v : values) self.add(v);
@@ -112,11 +111,11 @@ fn LinkedHashSet* LinkedHashSet.init_from_values(&self, Allocator allocator, Val
 <*
  @param [in] values : "The values for the LinkedHashSet entries"
  @require capacity > 0 : "The capacity must be 1 or higher"
- @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require load_factor > 0.0 && load_factor <= 1 : "The load factor must be higher than 0 and less or equal to 1"
  @require !self.is_initialized() : "Set was already initialized"
  @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
-fn LinkedHashSet* LinkedHashSet.tinit_from_values(&self, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn LinkedHashSet* LinkedHashSet.tinit_from_values(&self, Value[] values, sz capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	return self.init_from_values(tmem, values, capacity, load_factor);
 }
@@ -176,9 +175,9 @@ fn bool LinkedHashSet.is_empty(&set) @inline
  @return "The number of new elements added"
  @ensure total <= list.len
 *>
-fn usz LinkedHashSet.add_all(&set, Value[] list)
+fn int LinkedHashSet.add_all(&set, Value[] list)
 {
-	usz total;
+	int total;
 	foreach (v : list)
 	{
 		if (set.add(v)) total++;
@@ -191,9 +190,9 @@ fn usz LinkedHashSet.add_all(&set, Value[] list)
  @return "The number of new elements added"
  @ensure return <= other.count
 *>
-fn usz LinkedHashSet.add_all_from(&set, LinkedHashSet* other)
+fn int LinkedHashSet.add_all_from(&set, LinkedHashSet* other)
 {
-	usz total;
+	int total;
 	other.@each(;Value value)
 	{
 		if (set.add(value)) total++;
@@ -218,7 +217,7 @@ fn bool LinkedHashSet.add(&set, Value value)
 			break;
 	}
 	uint hash = rehash(value.hash());
-	uint index = index_for(hash, set.table.len);
+	int index = index_for(hash, set.table.len);
 	for (LinkedEntry *e = set.table[index]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(value, e.value)) return false;
@@ -269,9 +268,9 @@ fn void? LinkedHashSet.remove(&set, Value value) @maydiscard
 	if (!linkedhashset_remove_entry_for_value(set, value)) return NOT_FOUND~;
 }
 
-fn usz LinkedHashSet.remove_all(&set, Value[] values)
+fn int LinkedHashSet.remove_all(&set, Value[] values)
 {
-	usz total;
+	int total;
 	foreach (v : values)
 	{
 		if (linkedhashset_remove_entry_for_value(set, v)) total++;
@@ -282,9 +281,9 @@ fn usz LinkedHashSet.remove_all(&set, Value[] values)
 <*
  @param [&in] other : "Other set"
 *>
-fn usz LinkedHashSet.remove_all_from(&set, LinkedHashSet* other)
+fn int LinkedHashSet.remove_all_from(&set, LinkedHashSet* other)
 {
-	usz total;
+	int total;
 	other.@each(;Value val)
     {
 		if (linkedhashset_remove_entry_for_value(set, val)) total++;
@@ -330,7 +329,7 @@ fn void LinkedHashSet.clear(&set)
 	set.tail = null;
 }
 
-fn void LinkedHashSet.reserve(&set, usz capacity)
+fn void LinkedHashSet.reserve(&set, int capacity)
 {
 	if (capacity > set.threshold)
 	{
@@ -349,7 +348,7 @@ fn void LinkedHashSet.reserve(&set, usz capacity)
 *>
 fn LinkedHashSet LinkedHashSet.set_union(&self, Allocator allocator, LinkedHashSet* other)
 {
-	usz new_capacity = math::next_power_of_2(self.count + other.count);
+	int new_capacity = math::next_power_of_2(self.count + other.count);
 	LinkedHashSet result;
 	result.init(allocator, new_capacity, self.load_factor);
 	result.add_all_from(self);
@@ -369,7 +368,7 @@ fn LinkedHashSet LinkedHashSet.tset_union(&self, LinkedHashSet* other) => self.s
 fn LinkedHashSet LinkedHashSet.intersection(&self, Allocator allocator, LinkedHashSet* other)
 {
 	LinkedHashSet result;
-	result.init(allocator, math::min(self.table.len, other.table.len), self.load_factor);
+	result.init(allocator, (int)math::min(self.table.len, other.table.len), self.load_factor);
 
 	// Iterate through the smaller set for efficiency
 	LinkedHashSet* smaller = self.count <= other.count ? self : other;
@@ -451,9 +450,9 @@ fn bool LinkedHashSet.is_subset(&self, LinkedHashSet* other)
 
 // --- private methods
 
-fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, uint bucket_index) @private
+fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
 {
-	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
+	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
 		.value = value,
 		.next = set.table[bucket_index],
@@ -482,23 +481,23 @@ fn void linkedhashset_add_entry(LinkedHashSet* set, uint hash, Value value, uint
 	}
 }
 
-fn void linkedhashset_resize(LinkedHashSet* set, usz new_capacity) @private
+fn void linkedhashset_resize(LinkedHashSet* set, int new_capacity) @private
 {
 	LinkedEntry*[] old_table = set.table;
-	usz old_capacity = old_table.len;
+	int old_capacity = old_table.len;
 
-	if (old_capacity == MAXIMUM_CAPACITY)
+	if (old_capacity >= int::max / 2)
 	{
-		set.threshold = uint.max;
+		set.threshold = int::max;
 		return;
 	}
 
-	LinkedEntry*[] new_table = allocator::new_array(set.allocator, LinkedEntry*, new_capacity);
+	LinkedEntry*[] new_table = alloc::new_array(set.allocator, LinkedEntry*, new_capacity);
 	set.table = new_table;
-	set.threshold = (uint)(new_capacity * set.load_factor);
+	set.threshold = (int)(new_capacity * set.load_factor);
 
 	// Rehash all entries - linked list order remains unchanged
-	foreach (uint i, LinkedEntry *e : old_table)
+	foreach (int i, LinkedEntry *e : old_table)
 	{
 		if (!e) continue;
 
@@ -555,9 +554,9 @@ fn void linkedhashset_resize(LinkedHashSet* set, usz new_capacity) @private
 	linkedhashset_free_internal(set, old_table.ptr);
 }
 
-fn usz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
+fn sz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
 {
-	usz len;
+	sz len;
 	len += f.print("{ ")!;
 	self.@each(; Value value)
 	{
@@ -570,14 +569,14 @@ fn usz? LinkedHashSet.to_format(&self, Formatter* f) @dynamic
 fn void linked_hashset_transfer(LinkedHashSet* set, LinkedEntry*[] new_table) @private
 {
 	LinkedEntry*[] src = set.table;
-	uint new_capacity = new_table.len;
-	foreach (uint j, LinkedEntry *e : src)
+	int new_capacity = (int)new_table.len;
+	foreach (LinkedEntry *e : src)
 	{
 		if (!e) continue;
 		do
 		{
 			LinkedEntry* next = e.next;
-			uint i = index_for(e.hash, new_capacity);
+			int i = index_for(e.hash, new_capacity);
 			e.next = new_table[i];
 			new_table[i] = e;
 			e = next;
@@ -589,7 +588,7 @@ fn void linked_hashset_transfer(LinkedHashSet* set, LinkedEntry*[] new_table) @p
 fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 {
 	uint hash = rehash(value.hash());
-	uint i = index_for(hash, set.table.len);
+	int i = index_for(hash, set.table.len);
 	for (LinkedEntry *e = set.table[i]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(value, e.value))
@@ -603,12 +602,12 @@ fn void linkedhashset_put_for_create(LinkedHashSet* set, Value value) @private
 
 fn void linkedhashset_free_internal(LinkedHashSet* set, void* ptr) @inline @private
 {
-	allocator::free(set.allocator, ptr);
+	alloc::free(set.allocator, ptr);
 }
 
 fn void linkedhashset_create_entry(LinkedHashSet* set, uint hash, Value value, int bucket_index) @private
 {
-	LinkedEntry* entry = allocator::new(set.allocator, LinkedEntry, {
+	LinkedEntry* entry = alloc::new(set.allocator, LinkedEntry, {
 		.hash = hash,
 		.value = value,
 		.next = set.table[bucket_index],
@@ -638,7 +637,7 @@ fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @p
 	if (!set.count) return false;
 
 	uint hash = rehash(value.hash());
-	uint i = index_for(hash, set.table.len);
+	int i = index_for(hash, set.table.len);
 	LinkedEntry* prev = null;
 	LinkedEntry* e = set.table[i];
 
@@ -685,7 +684,7 @@ fn bool linkedhashset_remove_entry_for_value(LinkedHashSet* set, Value value) @p
 
 fn void linkedhashset_free_entry(LinkedHashSet* set, LinkedEntry *entry) @private
 {
-	allocator::free(set.allocator, entry);
+	alloc::free(set.allocator, entry);
 }
 
 struct LinkedHashSetIterator
@@ -722,7 +721,7 @@ fn bool LinkedHashSetIterator.has_next(&self)
 	return self.current && self.current.after != null;
 }
 
-fn usz LinkedHashSetIterator.len(&self) @operator(len)
+fn sz LinkedHashSetIterator.len(&self) @operator(len)
 {
     return self.set.count;
 }

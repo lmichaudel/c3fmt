@@ -11,36 +11,38 @@
 module std::core::mem::ref <Type>;
 import std::thread, std::atomic;
 
-const OVERALIGNED @private = Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+const OVERALIGNED @private = Type::alignment > mem::DEFAULT_MEM_ALIGNMENT;
 
 alias DeallocFn = fn void(void*);
 
 fn Ref wrap(Type* ptr, Allocator allocator = mem)
 {
-	return { .refcount = allocator::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
+	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
 <*
- @require $vacount < 2 : "Too many arguments."
- @require $vacount == 0 ||| $defined(Type a = $vaexpr[0]) : "The first argument must be an initializer for the type"
-*>
-macro Ref new(..., Allocator allocator = mem)
-{
+ @param #init : "The optional initializer"
 
-	$switch:
-		$case OVERALIGNED && !$vacount:
-			Type* ptr = allocator::calloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
-		$case OVERALIGNED:
-			Type* ptr = allocator::malloc_aligned(allocator, Type.sizeof, Type.alignof)!!;
-			*ptr = $vaexpr[0];
-		$case !$vacount:
-			Type* ptr = allocator::calloc(allocator, Type.sizeof);
-		$default:
-			Type* ptr = allocator::malloc(allocator, Type.sizeof);
-			*ptr = $vaexpr[0];
-	$endswitch
-	return { .refcount = allocator::new(allocator, Atomic{int}),
-	         .ptr = ptr,
-	         .allocator = allocator };
+ @require !$defined(#init) ||| $defined(Type a = #init) : "#init must be an initializer for the type"
+ @return "A pointer to data of type Type."
+*>
+macro Ref new(Allocator allocator, #init = ...) @nodiscard @safemacro
+{
+	$if $defined(#init):
+		$if OVERALIGNED:
+			Type* ptr = alloc::malloc_aligned(allocator, Type::size, Type::alignment)!!;
+			*ptr = #init;
+		$else
+			Type* ptr = alloc::malloc(allocator, Type::size);
+			*ptr = #init;
+		$endif
+	$else
+		$if OVERALIGNED:
+			Type* ptr = alloc::calloc_aligned(allocator, Type::size, Type::alignment)!!;
+		$else
+			Type* ptr = alloc::calloc(allocator, Type::size);
+		$endif
+	$endif
+	return { .refcount = alloc::new(allocator, Atomic{int}), .ptr = ptr, .allocator = allocator };
 }
 
 struct Ref
@@ -69,11 +71,11 @@ fn void Ref.release(&self)
 			self.ptr.dealloc();
 		$endif
 		$if OVERALIGNED:
-			allocator::free_aligned(self.allocator, self.ptr);
+			alloc::free_aligned(self.allocator, self.ptr);
 		$else
-			allocator::free(self.allocator, self.ptr);
+			alloc::free(self.allocator, self.ptr);
 		$endif
-		allocator::free(self.allocator, self.refcount);
+		alloc::free(self.allocator, self.refcount);
 		*self = {};
 	}
 }

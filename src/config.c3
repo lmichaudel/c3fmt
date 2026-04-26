@@ -107,6 +107,7 @@ fn Config? parse_from_file(String file_path) => @pool()
 				else if (val == "K&R")
 				{
 					conf.brace_style = K_AND_R;
+					conf.else_on_newline = false;
 				}
 				else
 				{

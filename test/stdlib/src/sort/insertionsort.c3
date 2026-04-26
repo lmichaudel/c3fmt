@@ -11,7 +11,7 @@ macro void insertionsort(list, cmp = ..., context = ...) @builtin @safemacro
 {
 	var used_cmp = $defined(cmp) ??? cmp : (TypeNotSet)null;
 	var used_ctx = $defined(context) ??? context : (TypeNotSet)null;
-	$if $kindof(list) == SLICE:
+	$if @kindof(list) == SLICE:
 		isort{$typeof(list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, lengthof(list), used_cmp, used_ctx);
 	$else
 		isort{$typeof(*list), $typeof(used_cmp), $typeof(used_ctx)}(list, 0, lengthof(*list), used_cmp, used_ctx);
@@ -20,15 +20,15 @@ macro void insertionsort(list, cmp = ..., context = ...) @builtin @safemacro
 
 module std::sort <Type, CmpFn, Context> @private;
 
-fn void isort(ListType list, usz low, usz high, CmpFn comp, Context context) @noinline @private
+fn void isort(ListType list, sz low, sz high, CmpFn comp, Context context) @noinline @private
 {
 	var $has_cmp = $typeof(comp) != TypeNotSet;
 	var $has_context = $typeof(context) != TypeNotSet;
-	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn.paramsof[0].type) p = list_get(list, 0));
+	var $cmp_by_value = $has_cmp &&& $defined($typefrom(CmpFn::params[0].type) p = list_get(list, 0));
 	var $has_get_ref = IS_SLICE ||| $defined(&(*list)[0]);
-	for (usz i = low; i < high; ++i)
+	for (sz i = low; i < high; ++i)
 	{
-		usz j = i;
+		sz j = i;
 		for (;j > low;)
 		{
 			$if $has_get_ref:
@@ -48,7 +48,7 @@ fn void isort(ListType list, usz low, usz high, CmpFn comp, Context context) @no
 				$endswitch
 				@swap(*rhs, *lhs);
 			$else
-				usz r = j;
+				sz r = j;
 				--j;
 				$switch:
 					$case $cmp_by_value && $has_context:
