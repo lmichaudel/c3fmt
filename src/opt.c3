@@ -551,8 +551,8 @@ macro @enable_errors() => err = 1;
 *>
 macro int? @parse(#args, ...) => @pool()
 {
-	$assert $vacount % 3 == 0 : `Options must be specified in triplets as "[shortname]", "[longname]", {store-ptr}.`;
-	var $argcount = $vacount / 3;
+	$assert $vaarg.len % 3 == 0 : `Options must be specified in triplets as "[shortname]", "[longname]", {store-ptr}.`;
+	var $argcount = $vaarg.len / 3;
 
 	// Used for sequentially filling array args for repeating options.
 	//   256 of these because that's the width of one shortname, which is how the indices themselves are indexed.
@@ -570,12 +570,12 @@ macro int? @parse(#args, ...) => @pool()
 	char[$argcount] $ct_shortnames = {};   // indexing for shortnames
 
 	// Iterate each provided triplet and build up all compile-time indices with accurate information.
-	$for var $argidx = 0, var $idx = 0; $argidx < $vacount; ++$idx, $argidx += 3:
+	$for var $argidx = 0, var $idx = 0; $argidx < $vaarg.len; ++$idx, $argidx += 3:
 	{ // scoped to avoid redeclarations of 'assignee' at runtime
 		// Let 'null' values converge to empty strings here.
-		String $shortname = $typeof($vaconst[$argidx]) == void* &&& $vaconst[$argidx] == null ??? "" : $vaconst[$argidx];
-		String $longname = $typeof($vaconst[$argidx + 1]) == void* &&& $vaconst[$argidx + 1] == null ??? "" : $vaconst[$argidx + 1];
-		var assignee = $vaexpr[$argidx + 2];
+		String $shortname = $typeof($vaarg[$argidx]) == void* &&& $vaarg[$argidx] == null ??? "" : $vaarg[$argidx];
+		String $longname = $typeof($vaarg[$argidx + 1]) == void* &&& $vaarg[$argidx + 1] == null ??? "" : $vaarg[$argidx + 1];
+		var assignee = $vaarg[$argidx + 2];
 
 		$assert $longname.len > 0 ||| $shortname.len > 0
 			: "You must specify at least a short or a long name for each option.";
@@ -685,7 +685,7 @@ macro int? @parse(#args, ...) => @pool()
 			if (BAD_CHAR == optval) return ILLEGAL_OPTION~;
 			if (BAD_ARG == optval) return MISSING_ARGUMENT~;
 
-			$for var $argidx = 0, var $idx = 0; $argidx < $vacount; ++$idx, $argidx += 3 :
+			$for var $argidx = 0, var $idx = 0; $argidx < $vaarg.len; ++$idx, $argidx += 3 :
 			{
 				var $shortname = $ct_shortnames[$idx];
 				var $longname = $ct_longnames[$idx];
