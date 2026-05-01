@@ -30,14 +30,23 @@ macro promote_int(x)
 	$endif
 }
 
+macro @all_const(...) @const
+{
+	$for int $i = 0; $i < $vaarg.len; $i++:
+		$if !$reflect($vaarg[$i]).is_const:
+			return false;
+		$endif
+	$endfor
+	return true;
+}
 
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):
 		$switch:
-		$case @is_vector(y) &&& $typeof(y)::inner == float::typeid:
+		$case @is_vector(y) &&& $typeof(y)::inner == float:
 			return (float)x;
-		$case $typeof(y)::typeid == float::typeid:
+		$case $typeof(y) == float:
 			return (float)x;
 		$default:
 			return (double)x;

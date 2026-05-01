@@ -71,7 +71,7 @@ fn void RipeMd.init(&self)
 fn void RipeMd.update(&self, char[] data)
 {
 	sz $bufsz = @sizeof(self.buffer);
-	sz avail = $bufsz - (self.byte_count & 0x3f);
+	sz avail = $bufsz - (sz)(self.byte_count & 0x3f);
 	self.byte_count += data.len;
 
 	if (avail > data.len)
@@ -155,12 +155,12 @@ macro @round(#a, b, #c, d, uint e, #func, uint k, x, int s) @local
 
  @param in : "Data or message block to process."
 *>
-fn void RipeMd.transform(&self, uint[BLOCK_SIZE / uint::size] in) @noinline => self.@transform(in);
+fn void RipeMd.transform(&self, uint[BLOCK_SIZE / uint::size] in) @noinline => @_ripemd_transform(self, in);
 
 <*
  @param in : "Data or message block to process."
 *>
-macro RipeMd.@transform(&self, uint[BLOCK_SIZE / uint::size] in) @local
+macro @_ripemd_transform(RipeMd* self, uint[BLOCK_SIZE / uint::size] in) @local
 {
 	uint aa, bb, cc, dd, ee, aaa, bbb, ccc, ddd, eee;
 	uint[] state = self.state[..];

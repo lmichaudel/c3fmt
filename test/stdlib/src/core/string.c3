@@ -82,7 +82,7 @@ macro Char16[] @char16(String $string) @builtin
 
 macro String @sprintf(String $format, ...) @builtin @const
 {
-	return $$sprintf($format, $vasplat);
+	return $$sprintf($format, ...$vaarg);
 }
 <*
  Return a temporary ZString created using the formatting function.
@@ -1152,8 +1152,8 @@ fn uint? String.to_uint(self, int base = 10) => to_integer{uint}(self, base) @in
 fn ushort? String.to_ushort(self, int base = 10) => to_integer{ushort}(self, base) @inline;
 fn char? String.to_char(self, int base = 10) => to_integer{char}(self, base) @inline;
 
-fn double? String.to_double(self) => self.to_real(double);
-fn float? String.to_float(self) => self.to_real(float);
+fn double? String.to_double(self) => _string_to_real(self, double);
+fn float? String.to_float(self) => _string_to_real(self, float);
 
 
 <*
