@@ -302,7 +302,7 @@ fn void fast_scan_recursive(DString* path_buf, FileList* files)
 		}
 	$else
 		// Fallback to standard traverse for non-POSIX (Windows handling would be more complex)
-		(void)io::path::traverse(io::path::temp(current_path)!!, &collect_callback, files);
+		(void)io::path::traverse(io::path::tnew(current_path)!!, &collect_callback, files);
 	$endif
 }
 
