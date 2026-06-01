@@ -127,7 +127,7 @@ fn int main(String[] args)
 		"stdin",
 		&cli_options.stdin, //
 		null,
-		"stdin-filepath?",
+		"stdin-filepath",
 		&cli_options.stdin_filepath, //
 		null,
 		"stdout",
