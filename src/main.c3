@@ -273,7 +273,11 @@ fn int main(String[] args)
 	if (files.len() == 0) return 0;
 
 	FixedThreadPool pool;
-	pool.init(os::num_cpu(), queue_size: files.len())!!;
+	ThreadSettings thread_settings = {};
+	$if env::DARWIN:
+		thread_settings = { .stack_size = 8 * mem::MB};
+	$endif 
+	pool.init(os::num_cpu(), queue_size: files.len(), thread_settings: thread_settings)!!;
 	defer (void)pool.destroy();
 
 	foreach (path : files)
