@@ -1329,6 +1329,124 @@ fn void C3Fmt.collapse_single_line(&self, sz start_idx)
 }
 
 <*
+ This function loops over the if/else-if/else chain, keeping stack depth constant.
+ @param node : "The if_stmt node to start from"
+*>
+fn void C3Fmt.process_if_chain(&self, TSNode node)
+{
+	TSNode current = node;
+	while (true)
+	{
+		TSNode body = current.get_child_with_field("body");
+		bool has_else_part = current.has_child_of_type("else_part");
+
+		// Find the else_part child index so we know where to stop the inner loop.
+		uint child_count = ts::node_child_count(current);
+		uint else_part_idx = child_count;
+		if (has_else_part)
+		{
+			for (uint i = 0; i < child_count; ++i)
+			{
+				if (ts::node_child(current, i).type() == "else_part")
+				{
+					else_part_idx = i;
+					break;
+				}
+			}
+		}
+
+		// Process the if_stmt children up to (but not including) else_part,
+		// replicating the behaviour of process_composite with default arguments.
+		for (uint i = 0; i < else_part_idx; ++i)
+		{
+			TSNode child = ts::node_child(current, i);
+			String type = child.type();
+			String prev_type = i > 0 ? ts::node_child(current, i - 1).type() : "";
+
+			if (i > 0
+				&& type != ";"
+				&& !(prev_type.starts_with("$") && (type == "paren_expr" || type == "("))
+			)
+			{
+				self.buf.space();
+			}
+
+			if (child.is_comment())
+			{
+				if (type == "block_comment") self.process_block_comment(child);
+				if (type == "line_comment") self.buf.inline_comment(self.extract_comment_string(child));
+			}
+			else if (ts::node_is_named(child))
+			{
+				self.process_node(child);
+			}
+			else
+			{
+				self.buf.text(child.get_text(self.source_code));
+			}
+		}
+
+		if (!has_else_part)
+		{
+			if (body.type() == "compound_stmt") self.buf.newline();
+			break;
+		}
+
+		TSNode else_part = ts::node_child(current, else_part_idx);
+
+		// Space before the else_part — replicates what process_composite emits before
+		// any non-first child. A following buf.newline() will trim this space.
+		self.buf.space();
+
+		// Replicated from case "else_part" in process_node.
+		if (self.config.else_on_newline && self.config.brace_style != K_AND_R)
+		{
+			self.buf.newline();
+		}
+
+		bool is_else_if = else_part.has_child_of_type("if_stmt");
+
+		if (!is_else_if)
+		{
+			// Plain else: process_composite is safe here — no nested if_stmt to recurse into.
+			self.process_composite(else_part, append_newline: true);
+			break;
+		}
+
+		// Else-if: emit the "else" keyword and any interleaved comments, then
+		// continue the loop with the nested if_stmt rather than recursing.
+		for (uint i = 0; i < ts::node_child_count(else_part); ++i)
+		{
+			TSNode child = ts::node_child(else_part, i);
+			String type = child.type();
+
+			if (type == "if_stmt")
+			{
+				if (i > 0) self.buf.space();
+				current = child;
+				break;
+			}
+
+			if (i > 0) self.buf.space();
+			if (child.is_comment())
+			{
+				if (type == "block_comment") self.process_block_comment(child);
+				if (type == "line_comment") self.buf.inline_comment(self.extract_comment_string(child));
+			}
+			else if (ts::node_is_named(child))
+			{
+				self.process_node(child);
+			}
+			else
+			{
+				self.buf.text(child.get_text(self.source_code));
+			}
+		}
+		// Loop continues with current = nested if_stmt.
+	}
+}
+
+<*
  Process a node of an unknown type
 *>
 fn void C3Fmt.process_node(
@@ -2038,22 +2156,7 @@ fn void C3Fmt.process_node(
 		case "do_stmt":
 			self.process_composite(node, append_newline: true);
 		case "if_stmt":
-			TSNode body = node.get_child_with_field("body");
-			TSNode parent = ts::node_parent(node);
-			self.process_composite(
-				node,
-				append_newline: body.type() == "compound_stmt"
-					&& !node.has_child_of_type("else_part")
-			);
-		case "else_part":
-			if (self.config.else_on_newline && self.config.brace_style != K_AND_R)
-			{
-				self.buf.newline();
-			}
-			self.process_composite(
-				node,
-				append_newline: !node.has_child_of_type("if_stmt")
-			);
+			self.process_if_chain(node);
 		case "switch_stmt":
 			self.process_composite(
 				node,
