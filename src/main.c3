@@ -273,7 +273,8 @@ fn int main(String[] args)
 	if (files.len() == 0) return 0;
 
 	FixedThreadPool pool;
-	pool.init(os::num_cpu(), queue_size: files.len())!!;
+	ThreadSettings settings = { .stack_size = 8388608 };
+	pool.init(os::num_cpu(), files.len(), settings)!!;
 	defer (void)pool.destroy();
 
 	foreach (path : files)

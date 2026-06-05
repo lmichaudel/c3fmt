@@ -10,6 +10,7 @@ on:
 
 env:
   MACOSX_DEPLOYMENT_TARGET: "11.0"
+  C3_BASE_URL: https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag
 
 jobs:
   build-and-test:
@@ -17,40 +18,39 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            artifact-name: c3fmt-linux
+            artifact-path: build/c3fmt
+          - os: macos-latest
+            artifact-name: c3fmt-macos
+            artifact-path: build/c3fmt
+          - os: windows-latest
+            artifact-name: c3fmt-windows
+            artifact-path: build/c3fmt.exe
 
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install C3 compiler (Linux)
-        if: runner.os == 'Linux'
+      - name: Install C3 compiler
         run: |
-          sudo apt-get update
-          sudo apt-get install -y curl tar
-          curl -L https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-linux.tar.gz -o c3.tar.gz
-          tar -xzf c3.tar.gz
-          sudo mv c3/c3c /usr/local/bin/c3c
-          sudo chmod +x /usr/local/bin/c3c
-          sudo cp -r c3 /usr/local/c3
-          echo "C3C_LIB=/usr/local/c3/lib" >> $GITHUB_ENV
-
-      - name: Install C3 compiler (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          curl -L -o c3.tar.gz https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-macos.zip
-          unzip c3.tar.gz
-          echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
+          case "$RUNNER_OS" in
+            Linux)
+              curl -fsSL -o c3.tar.gz $C3_BASE_URL/c3-linux.tar.gz
+              tar -xzf c3.tar.gz ;;
+            macOS)
+              curl -fsSL -o c3.zip $C3_BASE_URL/c3-macos.zip
+              tar -xf c3.zip ;;
+            Windows)
+              curl -fsSL -o c3.zip $C3_BASE_URL/c3-windows.zip
+              unzip -q c3.zip ;;
+          esac
           echo "$PWD/c3" >> $GITHUB_PATH
-
-      - name: Install C3 compiler (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          curl -L -o c3.zip https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag/c3-windows.zip
-          unzip c3.zip
-          echo "C3C_LIB=$PWD/c3/lib" >> $GITHUB_ENV
-          echo "$PWD/c3" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Set up tree-sitter
         uses: tree-sitter/setup-action@v2
@@ -59,51 +59,34 @@ jobs:
           install-cli: false
 
       - name: Run tests
-        if: runner.os != 'Windows'
-        run: c3c test --test-show-output -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
-
-      - name: Run tests (Windows)
-        if: runner.os == 'Windows'
-        run: c3c test --test-show-output -L "$env:RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
+        run: c3c test --test-show-output -L "${{ runner.tool_cache }}/tree-sitter/lib/lib"
 
       - name: Compile formatted standard library
-        if: runner.os != 'Windows'
         working-directory: test/stdlib
         run: c3c build
 
-      - name: Compile formatted standard library (Windows)
-        if: runner.os == 'Windows'
-        working-directory: test/stdlib
-        run: c3c build
+      - name: Setup static build (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y musl-tools musl-dev cmake
+          c3c build build-ts-lib --trust=full
+          MUSL_PATH=$(find /usr/lib -maxdepth 3 -name 'crt1.o' -path '*musl*' | head -1 | xargs dirname)
+          sed -i "s|/usr/lib/musl/lib|$MUSL_PATH|g" project.json
 
       - name: Build c3fmt
-        if: runner.os != 'Windows'
-        run: c3c build c3fmt -L "$RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
+        run: |
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            c3c build c3fmt-static
+            build/c3fmt c3/lib/std/collections/ > /dev/null
+          else
+            c3c build c3fmt -L "${{ runner.tool_cache }}/tree-sitter/lib/lib"
+          fi
 
-      - name: Build c3fmt (Windows)
-        if: runner.os == 'Windows'
-        run: c3c build c3fmt -L "$env:RUNNER_TOOL_CACHE/tree-sitter/lib/lib"
-
-      - name: Upload artifact (Linux)
-        if: runner.os == 'Linux'
+      - name: Upload artifact
         uses: actions/upload-artifact@v6
         with:
-          name: c3fmt-linux
-          path: build/c3fmt
-
-      - name: Upload artifact (macOS)
-        if: runner.os == 'macOS'
-        uses: actions/upload-artifact@v6
-        with:
-          name: c3fmt-macos
-          path: build/c3fmt
-
-      - name: Upload artifact (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v6
-        with:
-          name: c3fmt-windows
-          path: build/c3fmt.exe
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
 
   release:
     name: Create Release
@@ -113,33 +96,21 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Linux binary
+      - name: Download artifacts
         uses: actions/download-artifact@v6
         with:
-          name: c3fmt-linux
-          path: release-bin/linux
+          path: staging
 
-      - name: Download macOS binary
-        uses: actions/download-artifact@v6
-        with:
-          name: c3fmt-macos
-          path: release-bin/macos
-
-      - name: Download Windows binary
-        uses: actions/download-artifact@v6
-        with:
-          name: c3fmt-windows
-          path: release-bin/windows
-
-      - name: Prepare files for release
+      - name: Prepare release files
         run: |
           mkdir dist
-          mv release-bin/linux/c3fmt dist/c3fmt-linux
-          mv release-bin/macos/c3fmt dist/c3fmt-macos
-          mv release-bin/windows/c3fmt.exe dist/c3fmt-windows.exe
+          mv staging/c3fmt-linux/c3fmt        dist/c3fmt-linux
+          mv staging/c3fmt-macos/c3fmt        dist/c3fmt-macos
+          mv staging/c3fmt-windows/c3fmt.exe  dist/c3fmt-windows.exe
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: ncipollo/release-action@v1
         with:
-          files: dist/*
-          generate_release_notes: true
+          artifacts: "dist/*"
+          generateReleaseNotes: true
+          allowUpdates: true

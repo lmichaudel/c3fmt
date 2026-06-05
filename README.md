@@ -66,6 +66,21 @@ c3c build -L /path/to/tree-sitter/lib
 
 The binary will be located in `build/c3fmt`.
 
+### Building Statically
+
+You can build a fully static version of `c3fmt` (which is useful for standalone distribution) without needing `libtree-sitter` installed globally on your system.
+
+First, build the static `tree-sitter` library:
+```bash
+c3c build build-ts-lib --trust=full
+```
+
+Then compile the static `c3fmt` binary:
+```bash
+c3c build c3fmt-static
+```
+The resulting static executable will be located in `build/c3fmt`.
+
 ### Updating Sources
 
 You can keep the project dependencies and test data up-to-date using the built-in `prepare` targets:

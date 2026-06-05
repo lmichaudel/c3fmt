@@ -9,9 +9,32 @@
   "test-sources":  [ "test/corpus.c3", "test/stdlib.c3", "test/stability.c3" ],
   "build-dir": "build",
   "output": "build",
+  "exec-dir": "scripts",
   "targets": {
     "c3fmt": {
+      "name": "c3fmt",
       "type": "executable"
+    },
+    "build-ts-lib": {
+      "type": "prepare",
+      "exec": [ "$PWD/build_tree_sitter_static.sh" ]
+    },
+    "c3fmt-static": {
+      "name": "c3fmt",
+      "type": "executable",
+      "single-module": false,
+      "linker-search-paths": [ "build/ts-lib/lib" ],
+      "link-args": [
+        "-static",
+        "-s",
+        "-nostdlib",
+        "-L/usr/lib/musl/lib",
+        "/usr/lib/musl/lib/crt1.o",
+        "/usr/lib/musl/lib/crti.o",
+        "-ltree-sitter", "-ldl", "-lm", "-lc", "/usr/lib/musl/lib/crtn.o" ],
+      "linux-libc": "musl",
+      "linker": "cc",
+      "debug-info": "none"
     },
     "update-grammar": {
       "type": "prepare",
