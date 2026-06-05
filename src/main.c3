@@ -114,12 +114,8 @@ fn int main(String[] args)
 	// c3fmt off
 	int? arg_last_parsed = opt::@parse(//
 		args, //
-		"h*",
-		"help",
-		null, //
-		"v",
-		"version",
-		&version_asked, //
+		"h*", "help", null, //
+		"v", "version", &version_asked, //
 		null,
 		"in-place",
 		&cli_options.in_place, //
@@ -151,18 +147,22 @@ fn int main(String[] args)
 			case opt::HELP_REQUESTED:
 			case opt::MISSING_ARGUMENT:
 			case opt::ILLEGAL_OPTION:
+			    io::printfn("c3fmt: A customizable code formatter for the C3 language.");
+                io::printfn("Author: Lucas Michaudel <lucas.michaudel@gmail.com>");
+                io::printfn("Repository: https://github.com/lmichaudel/c3fmt");
+                io::printf("\n");
 				io::printfn("Usage: c3fmt [<options>] <files>");
 				io::printf("\n");
 				io::printfn("Options:");
-				io::printfn("\t-h, --help       - Show this help.");
-				io::printfn("\t-v, --version    - Show current version.");
-				io::printfn("\t--in-place                  - Format files in place.");
-				io::printfn("\t--stdin                     - Read input from stdin.");
-				io::printfn("\t--stdin-filepath=<path>     - File path hint for stdin mode (used to find .c3fmt config).");
-				io::printfn("\t--stdout                    - Output result to stdout.");
-				io::printfn("\t--config=<path>             - Specify a config file.");
-				io::printfn("\t--default                   - Force default config.");
-				io::printfn("\t--check                     - Finish with error if files are not formatted.");
+				io::printfn("\t-h, --help               - Show this help.");
+				io::printfn("\t-v, --version            - Show current version.");
+				io::printfn("\t--in-place               - Format files in place.");
+				io::printfn("\t--stdin                  - Read input from stdin.");
+				io::printfn("\t--stdin-filepath=<path>  - File path hint for stdin mode (used to find .c3fmt config).");
+				io::printfn("\t--stdout                 - Output result to stdout.");
+				io::printfn("\t--config=<path>          - Specify a config file.");
+				io::printfn("\t--default                - Force default config.");
+				io::printfn("\t--check                  - Finish with error if files are not formatted.");
 				return 1;
 			default:
 				return 1;
@@ -171,7 +171,7 @@ fn int main(String[] args)
 
 	if (version_asked)
 	{
-		io::printfn("c3fmt version:     \t0.2.6");
+		io::printfn("c3fmt version:     \t%s", env::PROJECT_VERSION);
 		io::printfn("target c3c version:\t0.8.0");
 		return 0;
 	}
