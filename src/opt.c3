@@ -244,7 +244,7 @@ fn int parse_long_options(String[] args, ZString option_str, LongOption[] option
 			else if (options[match].has_arg == OptionArgType.REQUIRED_ARGUMENT)
 			{
 				// optional argument doesn't use next nargv
-				arg = args[ind++];
+				if (ind < args.len) arg = args[ind++];
 			}
 		}
 
