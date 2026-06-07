@@ -6,8 +6,6 @@ import tree_sitter_c3;
 import c3fmt::printer;
 import c3fmt::token;
 
-tlocal int ternary_depth;
-
 struct C3Fmt
 {
 	Config config;
@@ -1914,17 +1912,34 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "[", "..." },
 			);
 		case "ternary_expr":
-			ternary_depth++;
-			usz id = self.begin_wrap_group(2);
-			self.process_composite(
-				node,
-				add_wrap_point_fn: fn (String type, String field, usz id)
-			{
-				return type == ":" ? { .indent = ternary_depth == 1 ? 1 : 0, .group_id = id } : NO_WRAP~;
-			}, group_id: id);
-			ternary_depth--;
 		case "elvis_orelse_expr":
-			self.process_composite(node);
+			// A ternary in an alternative/consequence position is part of a ternary chain.
+			bool is_chained =
+				ts::node_parent(node).type() == "ternary_expr"
+				&& (node.field_name() == "alternative" || node.field_name() == "consequence");
+
+			usz expr_id = 0;
+
+			// Chained ternaries share a wrap group so the entire chain breaks consistently.
+			if (is_chained)
+			{
+				foreach_r (item : self.buf)
+				{
+					if (item.kind == WRAP_POINT || item.kind == BEGIN_WRAP_GROUP)
+					{
+						expr_id = item.wrap_point.group_id;
+						break;
+					}
+				}
+			}
+
+			// Reuse the enclosing chain's group_id, otherwise create a new group.
+			expr_id = expr_id ?: self.begin_wrap_group(2);
+
+			self.process_composite(node, add_wrap_point_fn: fn (String type, String field, usz id)
+			{
+				return type == ":" ? { .indent = 1, .group_id = id } : NO_WRAP~;
+			}, group_id: expr_id);
 		case "maybe_deref_expr":
 			self.process_sequence(node);
 		case "binary_expr":

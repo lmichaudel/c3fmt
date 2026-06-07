@@ -4,7 +4,9 @@ fn void foo()
 	ch = i == int_from_5_chars('l', 't', 0, 0, 0) ? '<'
 		: i == int_from_5_chars('g', 't', 0, 0, 0) ? '>'
 		: i == int_from_5_chars('a', 'm', 'p', 0, 0) ? '&'
-		: i == int_from_5_chars('a', 'p', 'o', 's', 0) ? '\'' : i == int_from_5_chars('q', 'u', 'o', 't', 0) ? '"' : 0;
+		: i == int_from_5_chars('a', 'p', 'o', 's', 0) ? '\''
+		: i == int_from_5_chars('q', 'u', 'o', 't', 0) ? '"'
+		: 0;
 }
 
 fn void bar()
