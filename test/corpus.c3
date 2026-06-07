@@ -107,3 +107,7 @@ fn void deep_else_if() @test {
 fn void disable() @test {
     test("disable", "test/corpus/disable.c3", "test/corpus/disable_f.c3");
 }
+
+fn void ternary_nested() @test {
+    test("ternary_nested", "test/corpus/ternary_nested.c3", "test/corpus/ternary_nested_f.c3");
+}
