@@ -6,6 +6,8 @@ import tree_sitter_c3;
 import c3fmt::printer;
 import c3fmt::token;
 
+tlocal int ternary_depth;
+
 struct C3Fmt
 {
 	Config config;
@@ -1912,7 +1914,15 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "[", "..." },
 			);
 		case "ternary_expr":
-			self.process_composite(node);
+			ternary_depth++;
+			usz id = self.begin_wrap_group(2);
+			self.process_composite(
+				node,
+				add_wrap_point_fn: fn (String type, String field, usz id)
+			{
+				return type == ":" ? { .indent = ternary_depth == 1 ? 1 : 0, .group_id = id } : NO_WRAP~;
+			}, group_id: id);
+			ternary_depth--;
 		case "elvis_orelse_expr":
 			self.process_composite(node);
 		case "maybe_deref_expr":
