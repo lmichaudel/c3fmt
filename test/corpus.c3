@@ -74,6 +74,24 @@ fn void alignment() @test {
     test("alignment", "test/corpus/alignment.c3", "test/corpus/alignment_f.c3", conf);
 }
 
+fn void newline_at_eof() @test {
+    String input = "fn void main() {}";
+
+    Config conf = c3fmt::default_config();
+    assert(!conf.newline_at_eof);
+
+    String without_newline = c3fmt::format_string(mem, input, conf, check_semantic: true)!!;
+    defer without_newline.free(mem);
+    assert(without_newline.len > 0);
+    assert(without_newline[^1] != '\n');
+
+    conf.newline_at_eof = true;
+    String with_newline = c3fmt::format_string(mem, input, conf, check_semantic: true)!!;
+    defer with_newline.free(mem);
+    assert(with_newline.len > 0);
+    assert(with_newline[^1] == '\n');
+}
+
 fn void indent_leak() @test {
     test("indent_leak", "test/corpus/indent_leak.c3", "test/corpus/indent_leak_f.c3");
 }
