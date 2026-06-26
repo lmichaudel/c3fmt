@@ -68,6 +68,19 @@ fn void comments() @test {
     test("comments", "test/corpus/comments.c3", "test/corpus/comments_f.c3", conf);
 }
 
+fn void string_concat() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    test("string_concat", "test/corpus/string_concat.c3", "test/corpus/string_concat_f.c3", conf);
+}
+
+fn void string_concat_align() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    conf.align_string_concat = true;
+    test("string_concat_align", "test/corpus/string_concat.c3", "test/corpus/string_concat_align_f.c3", conf);
+}
+
 fn void alignment() @test {
     Config conf = c3fmt::default_config();
     conf.max_line_length = 180;

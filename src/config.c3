@@ -21,6 +21,7 @@ struct Config
 
 	bool align_assignments;
 	bool align_comments;
+	bool align_string_concat;
 }
 
 fn Config default_config()
@@ -36,6 +37,7 @@ fn Config default_config()
 		.newline_at_eof = false,
 		.align_assignments = true,
 		.align_comments = true,
+		.align_string_concat = false,
 	};
 }
 
@@ -123,6 +125,8 @@ fn Config? parse_from_file(String file_path) => @pool()
 				conf.align_assignments = val.to_bool()!;
 			case "align_comments":
 				conf.align_comments = val.to_bool()!;
+			case "align_string_concat":
+				conf.align_string_concat = val.to_bool()!;
 
 			default:
 				return INVALID_CONFIG~;

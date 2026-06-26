@@ -914,6 +914,55 @@ fn void C3Fmt.process_composite(
 }
 
 <*
+ Format a sequence of adjacent string/bytes literals (implicit concatenation).
+ Each literal after the first becomes a wrap point, so an over-long concatenation
+ is broken with one literal per line, keeping the first on the opening line.
+ @param node : "The string_expr or bytes_expr node"
+*>
+fn void C3Fmt.process_concat_literals(&self, TSNode node)
+{
+	// Comments between literals are rare; fall back to the plain layout for them.
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		if (ts::node_child(node, i).is_comment())
+		{
+			self.process_composite(node);
+			return;
+		}
+	}
+
+	if (!self.wrapping_enabled)
+	{
+		self.process_composite(node);
+		return;
+	}
+
+	usz id = self.begin_wrap_group(2);
+
+	// When aligning, continuation literals line up under the first literal's
+	// column; otherwise they hang one indent level below.
+	bool align = self.config.align_string_concat;
+	usz align_col = align ? self.current_column() : 0;
+
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		TSNode child = ts::node_child(node, i);
+
+		if (i > 0)
+		{
+			self.buf.space();
+			self.buf.wrap_point({ .indent = align ? 0 : 1, .group_id = id });
+			if (align)
+			{
+				self.buf.push(token::align(align_col));
+			}
+		}
+
+		self.process_node(child);
+	}
+}
+
+<*
  Rawly format node sequentially, without appending any separator between them.
  Useful for nodes like field accessor ("my_struct.my_field").
  @param node : "The processed node"
@@ -2488,8 +2537,10 @@ fn void C3Fmt.process_node(
 		case "doc_comment_contract_descriptor":
 			self.buf.text(node.get_text(self.source_code));
 
-		case "bytes_expr": // TODO idk what this is, a space separated list of bytes_literal ?
-		case "string_expr": // same...
+		case "bytes_expr": // space separated list of bytes_literal
+		case "string_expr": // adjacent string literals (implicit concatenation)
+			self.process_concat_literals(node);
+
 		case "lengthof":
 		case "$eval":
 		case "$stringify":

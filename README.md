@@ -59,6 +59,7 @@ You can look at [.c3fmt](.c3fmt) for the default configuration.
 | `newline_at_eof` | Ensure formatted output ends with a newline. | `false` |
 | `align_assignments` | Align `=` and `=>` in consecutive declarations/assignments. | `true` |
 | `align_comments` | Align trailing comments in consecutive lines. | `true` |
+| `align_string_concat` | Align wrapped adjacent string literals under the first literal's column (otherwise indent one level). | `false` |
 
 ## Building
 
