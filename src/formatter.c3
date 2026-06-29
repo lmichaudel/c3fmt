@@ -116,7 +116,7 @@ fn usz C3Fmt.current_column(&self)
 
 fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 {
-	if (comment == "c3fmt on" && !self.formatter_enabled)
+	if (comment.starts_with("c3fmt on") && !self.formatter_enabled)
 	{
 		// must keep indent/dedent tokens
 		TokenBuffer structural_tokens;
@@ -159,7 +159,7 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 
 fn void C3Fmt.check_directive_after(&self, String comment, TSNode node)
 {
-	if (comment == "c3fmt off" && self.formatter_enabled)
+	if (comment.starts_with("c3fmt off") && self.formatter_enabled)
 	{
 		self.formatter_enabled = false;
 		self.disabled_start_byte = node.end_byte();
