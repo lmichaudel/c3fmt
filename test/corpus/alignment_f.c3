@@ -4,3 +4,11 @@ const int[2][] SAUCER_LINES = {
 	{ 6, 0 }, { 6, 1 }, { 6, 2 }, { 6, 3 }, { 6, 4 }, { 6, 5 },
 	{ 7, 0 }, { 7, 1 }, { 7, 2 }, { 7, 3 }, { 7, 4 }, { 7, 5 }
 };
+
+<*
+ Constants in this group should align even when the first declaration has a
+ doc comment.
+*>
+const int FIRST         = 1;
+const int SECOND_LONGER = 2;
+const int THIRD         = 3;

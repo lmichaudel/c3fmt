@@ -417,27 +417,55 @@ fn bool C3Fmt.has_trailing_comma(&self, TSNode node)
 	return false;
 }
 
-fn bool is_alignable_block_node(TSNode node)
+fn bool is_declaration_wrapper(TSNode node)
 {
 	String type = node.type();
-	if (type == "declaration_stmt" || type == "global_declaration")
+	return type == "declaration_stmt" || type == "global_declaration";
+}
+
+fn TSNode declaration_target(TSNode node)
+{
+	if (!is_declaration_wrapper(node)) return node;
+
+	for (uint i = 0; i < ts::node_named_child_count(node); ++i)
 	{
-		if (ts::node_named_child_count(node) == 0) return false;
-		node = ts::node_named_child(node, 0);
-		type = node.type();
+		TSNode child = ts::node_named_child(node, i);
+		if (child.type() == "doc_comment" || child.is_comment()) continue;
+		return child;
 	}
-	return type == "const_declaration" || type == "var_declaration" || (type == "declaration" && node.start_point_row() == node.end_point_row()) || type == "enum_constant";
+	return (TSNode){};
+}
+
+fn void C3Fmt.process_declaration_prefix(&self, TSNode node, TSNode target)
+{
+	if (!is_declaration_wrapper(node)) return;
+
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		TSNode child = ts::node_child(node, i);
+		if (ts::node_eq(child, target)) return;
+		if (ts::node_is_named(child)) self.process_node(child);
+	}
+}
+
+fn bool is_alignable_block_node(TSNode node)
+{
+	node = declaration_target(node);
+	if (ts::node_is_null(node)) return false;
+	String type = node.type();
+	if (type == "const_declaration" || type == "var_declaration" || type == "enum_constant") return true;
+	if (type != "declaration") return false;
+	if (node.start_point_row() == node.end_point_row()) return true;
+	if (!node.has_child_with_field("right")) return false;
+	String right_type = node.get_child_with_field("right").type();
+	return right_type == "binary_expr" || right_type == "ternary_expr" || right_type == "elvis_orelse_expr";
 }
 
 fn TSNode find_assignment_op(TSNode node)
 {
-	TSNode target = node;
-	String type = node.type();
-	if (type == "declaration_stmt" || type == "global_declaration")
-	{
-		if (ts::node_named_child_count(node) == 0) return (TSNode){};
-		target = ts::node_named_child(node, 0);
-	}
+	TSNode target = declaration_target(node);
+	if (ts::node_is_null(target)) return (TSNode){};
+	String type = target.type();
 
 	for (uint i = 0; i < ts::node_child_count(target); ++i)
 	{
@@ -474,6 +502,17 @@ fn void C3Fmt.process_assignment_left(&self, TSNode target, TSNode op)
 	}
 }
 
+fn void C3Fmt.process_alignment_probe_node(&self, TSNode child)
+{
+	if (child.type() == "declaration_stmt" || child.type() == "global_declaration")
+	{
+		self.process_composite(child, append_newline: false);
+		return;
+	}
+
+	self.process_node(child, false);
+}
+
 fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint end_index)
 {
 	usz max_op_col = 0;
@@ -493,7 +532,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		if (!ts::node_is_null(op))
 		{
 			// Format up to the '='
-			TSNode target = (child.type() == "declaration_stmt" || child.type() == "global_declaration") ? ts::node_named_child(child, 0) : child;
+			TSNode target = declaration_target(child);
 			self.process_assignment_left(target, op);
 			max_op_col = max(max_op_col, self.current_column());
 		}
@@ -501,15 +540,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		// Reset and format whole node without trailing newline to find comment col
 		while (self.buf.len() > start_buf_len) (void)self.pop_token();
 
-		if (child.type() == "declaration_stmt" || child.type() == "global_declaration")
-		{
-			// We need to NOT append newline here
-			self.process_composite(child, append_newline: false);
-		}
-		else
-		{
-			self.process_node(child, false);
-		}
+		self.process_alignment_probe_node(child);
 
 		if (i + 1 < named_child_count)
 		{
@@ -522,6 +553,41 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 
 		while (self.buf.len() > start_buf_len) {
 			(void)self.pop_token();
+		}
+	}
+
+	if (self.config.max_line_length > 0 && max_op_col > 0)
+	{
+		for (uint i = start_index; i < end_index; ++i)
+		{
+			TSNode child = ts::node_named_child(parent, i);
+			if (child.is_comment()) continue;
+
+			sz start_buf_len = self.buf.len();
+			TSNode op = find_assignment_op(child);
+			if (ts::node_is_null(op)) continue;
+
+			TSNode target = declaration_target(child);
+			TSNode right = (target.type() == "macro_declaration" || !target.has_child_with_field("right"))
+				? (TSNode){}
+				: target.get_child_with_field("right");
+			if (ts::node_is_null(right) || right.type() != "call_expr") continue;
+
+			self.process_assignment_left(target, op);
+			usz op_col = self.current_column();
+			while (self.buf.len() > start_buf_len) (void)self.pop_token();
+
+			self.process_alignment_probe_node(child);
+			usz line_col = self.current_column();
+			while (self.buf.len() > start_buf_len) (void)self.pop_token();
+
+			if (max_op_col > op_col
+				&& line_col <= self.config.max_line_length
+				&& line_col + (max_op_col - op_col) > self.config.max_line_length)
+			{
+				max_op_col = 0;
+				break;
+			}
 		}
 	}
 
@@ -547,8 +613,10 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 		TSNode op = find_assignment_op(child);
 		if (!ts::node_is_null(op) && max_op_col > 0)
 		{
-			TSNode target = (child.type() == "declaration_stmt" || child.type() == "global_declaration") ? ts::node_named_child(child, 0) : child;
+			TSNode target = declaration_target(child);
 			TSNode right = (target.type() == "macro_declaration" || !target.has_child_with_field("right")) ? (TSNode){} : target.get_child_with_field("right");
+
+			self.process_declaration_prefix(child, target);
 
 			// Format until '='
 			self.process_assignment_left(target, op);
@@ -572,7 +640,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 					TSNode decl = ts::node_named_child(parent, m);
 					TSNode op2 = find_assignment_op(decl);
 					if (!ts::node_is_null(op2)) {
-						TSNode t2 = (decl.type() == "declaration_stmt" || decl.type() == "global_declaration") ? ts::node_named_child(decl, 0) : decl;
+						TSNode t2 = declaration_target(decl);
 						TSNode r2 = (t2.type() == "macro_declaration" || !t2.has_child_with_field("right")) ? (TSNode){} : t2.get_child_with_field("right");
 						// For macros, the 'right' side is the body, but it starts with =>
 						if (ts::node_is_null(r2) && t2.type() == "macro_declaration") r2 = op2;
@@ -611,9 +679,14 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			}
 
 			// Semicolon of declaration_stmt if any
-			if (child.type() == "declaration_stmt" || child.type() == "global_declaration") {
-				for (uint s = 1; s < ts::node_child_count(child); ++s) {
+			if (is_declaration_wrapper(child)) {
+				bool found_target = false;
+				for (uint s = 0; s < ts::node_child_count(child); ++s) {
 					TSNode sc = ts::node_child(child, s);
+					if (!found_target) {
+						if (ts::node_eq(sc, target)) found_target = true;
+						continue;
+					}
 					if (ts::node_is_named(sc)) {
 						if (sc.is_comment()) {
 							self.buf.push(token::space());
@@ -837,6 +910,55 @@ fn void C3Fmt.process_composite(
 	if (append_newline)
 	{
 		self.buf.newline();
+	}
+}
+
+<*
+ Format a sequence of adjacent string/bytes literals (implicit concatenation).
+ Each literal after the first becomes a wrap point, so an over-long concatenation
+ is broken with one literal per line, keeping the first on the opening line.
+ @param node : "The string_expr or bytes_expr node"
+*>
+fn void C3Fmt.process_concat_literals(&self, TSNode node)
+{
+	// Comments between literals are rare; fall back to the plain layout for them.
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		if (ts::node_child(node, i).is_comment())
+		{
+			self.process_composite(node);
+			return;
+		}
+	}
+
+	if (!self.wrapping_enabled)
+	{
+		self.process_composite(node);
+		return;
+	}
+
+	usz id = self.begin_wrap_group(2);
+
+	// When aligning, continuation literals line up under the first literal's
+	// column; otherwise they hang one indent level below.
+	bool align = self.config.align_string_concat;
+	usz align_col = align ? self.current_column() : 0;
+
+	for (uint i = 0; i < ts::node_child_count(node); ++i)
+	{
+		TSNode child = ts::node_child(node, i);
+
+		if (i > 0)
+		{
+			self.buf.space();
+			self.buf.wrap_point({ .indent = align ? 0 : 1, .group_id = id });
+			if (align)
+			{
+				self.buf.push(token::align(align_col));
+			}
+		}
+
+		self.process_node(child);
 	}
 }
 
@@ -1714,6 +1836,8 @@ fn void C3Fmt.process_node(
 				}
 			}
 			bool is_multi = start_row != node.end_point().row;
+			usz id = 0;
+			bool has_const = false;
 			for (uint i = 0; i < ts::node_child_count(node); ++i)
 			{
 				TSNode child = ts::node_child(node, i);
@@ -1732,6 +1856,11 @@ fn void C3Fmt.process_node(
 					{
 						self.buf.newline();
 						self.indent();
+						id = self.begin_wrap_group(2);
+					}
+					else
+					{
+						id = self.begin_wrap_group(2);
 					}
 					continue;
 				}
@@ -1740,7 +1869,6 @@ fn void C3Fmt.process_node(
 				{
 					if (is_multi)
 					{
-						self.buf.newline();
 						self.dedent();
 					}
 					self.buf.text(";");
@@ -1757,6 +1885,18 @@ fn void C3Fmt.process_node(
 					{
 						self.buf.space();
 					}
+				}
+
+				if (type == "const_ident" && self.wrapping_enabled)
+				{
+					if (!is_multi || has_const)
+					{
+						self.buf.wrap_point({
+							.indent = is_multi ? 0 : 1,
+							.group_id = id
+						});
+					}
+					has_const = true;
 				}
 
 				if (child.is_comment())
@@ -2397,8 +2537,10 @@ fn void C3Fmt.process_node(
 		case "doc_comment_contract_descriptor":
 			self.buf.text(node.get_text(self.source_code));
 
-		case "bytes_expr": // TODO idk what this is, a space separated list of bytes_literal ?
-		case "string_expr": // same...
+		case "bytes_expr": // space separated list of bytes_literal
+		case "string_expr": // adjacent string literals (implicit concatenation)
+			self.process_concat_literals(node);
+
 		case "lengthof":
 		case "$eval":
 		case "$stringify":
