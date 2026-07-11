@@ -51,10 +51,10 @@ fn void C3Fmt.free(&self)
 	self.dstr_buf.free();
 }
 
-fn usz C3Fmt.begin_wrap_group(&self, usz priority)
+fn usz C3Fmt.begin_wrap_group(&self, usz priority, bool force_wrap = false)
 {
 	self.next_group_id++;
-	self.buf.push(token::begin_wrap_group(self.next_group_id, priority));
+	self.buf.push(token::begin_wrap_group(self.next_group_id, priority, force_wrap));
 	return self.next_group_id;
 }
 
@@ -2182,15 +2182,25 @@ fn void C3Fmt.process_node(
 			if (node.has_child_of_type("initializer_element"))
 			{
 				bool is_manual_multiline = node.start_point_row() != node.end_point_row();
-				uint count = ts::node_named_child_count(node);
 
-				if (is_manual_multiline && count > 10)
+				uint child_count = ts::node_child_count(node);
+				bool has_trailing_comma = false;
+				for (int i = (int)child_count - 1; i >= 0; i--)
+				{
+					TSNode child = ts::node_child(node, (uint)i);
+					if (child.type() == "}" || child.is_comment()) continue;
+					if (child.type() == ",") has_trailing_comma = true;
+					break;
+				}
+
+				uint count = ts::node_named_child_count(node);
+				if (is_manual_multiline && count > 10 && !has_trailing_comma)
 				{
 					self.process_composite(node, skip_space_type: { "," }, respect_input_newlines: true);
 				}
 				else
 				{
-					usz id = self.begin_wrap_group(2);
+					usz id = self.begin_wrap_group(2, has_trailing_comma);
 					self.process_composite(
 						node,
 						skip_space_type: { "," },

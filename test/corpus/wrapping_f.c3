@@ -22,7 +22,10 @@ fn int main(
 
 	RenderingInfo rendering_info = vk::renderingInfo().setLayerCount(1)
 		.setRenderArea(
-			{ .offset = { .x = 0, .y = 0 }, .extent = context.extent, }
+			{
+				.offset = { .x = 0, .y = 0 },
+				.extent = context.extent,
+			}
 		);
 }
 

@@ -19,6 +19,7 @@ struct WrapPoint
 	usz indent;
 	usz group_id;
 	usz priority;
+	bool force_wrap;
 }
 
 struct Token
@@ -65,11 +66,11 @@ fn Token inline_comment(String text)
 	return (Token) { .kind = INLINE_COMMENT, .str = text };
 }
 
-fn Token begin_wrap_group(usz id, usz priority)
+fn Token begin_wrap_group(usz id, usz priority, bool force_wrap = false)
 {
 	return (Token) {
 		.kind = BEGIN_WRAP_GROUP,
-		.wrap_point = { .group_id = id, .priority = priority }
+		.wrap_point = { .group_id = id, .priority = priority, .force_wrap = force_wrap }
 	};
 }
 
@@ -357,6 +358,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 	usz highest_priority = 0;
 	bool need_wrapping = false;
 	bool has_inline_comment = false;
+	bool force_wrap = false;
 
 	foreach (token : tokens)
 	{
@@ -364,6 +366,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 		{
 			need_wrapping = true;
 			highest_priority = max(token.wrap_point.priority, highest_priority);
+			if (token.wrap_point.force_wrap) force_wrap = true;
 		}
 
 		if(token.kind == INLINE_COMMENT) {
@@ -371,8 +374,7 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 		}
 	}
 
-	need_wrapping = need_wrapping && self.config.max_line_length > 0
-		&& line_length > self.config.max_line_length;
+	need_wrapping = force_wrap || (need_wrapping && self.config.max_line_length > 0 && line_length > self.config.max_line_length);
 
 	if (need_wrapping)
 	{
@@ -551,9 +553,9 @@ fn void TokenBuffer.inline_comment(&self, String text)
 	self.push(token::inline_comment(text));
 }
 
-fn void TokenBuffer.begin_wrap_group(&self, usz id, usz priority)
+fn void TokenBuffer.begin_wrap_group(&self, usz id, usz priority, bool force_wrap = false)
 {
-	self.push(token::begin_wrap_group(id, priority));
+	self.push(token::begin_wrap_group(id, priority, force_wrap));
 }
 
 fn void TokenBuffer.wrap_point(&self, WrapPoint wrap_point)
