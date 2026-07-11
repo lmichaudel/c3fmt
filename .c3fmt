@@ -8,5 +8,7 @@ max_line_length: 120
 brace_style: ALLMAN
 else_on_newline: true
 
+spaces_before_trailing_comment: 1
+
 align_assignments: true
 align_comments: true
