@@ -246,6 +246,12 @@ fn void C3Fmt.print(&self)
 			default:
 		}
 	}
+
+	String output = self.dstr_buf.str_view();
+	if (self.config.newline_at_eof && output.len > 0 && output[^1] != '\n')
+	{
+		self.dstr_buf.append('\n');
+	}
 }
 
 fn void C3Fmt.print_indent(&self)

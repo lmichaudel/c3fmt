@@ -17,11 +17,13 @@ struct Config
 
 	BraceStyle brace_style;
 	bool else_on_newline;
+	bool newline_at_eof;
 
 	uint spaces_before_trailing_comment;
 
 	bool align_assignments;
 	bool align_comments;
+	bool align_string_concat;
 }
 
 fn Config default_config()
@@ -34,9 +36,11 @@ fn Config default_config()
 		.max_line_length = 120,
 		.brace_style = ALLMAN,
 		.else_on_newline = true,
+		.newline_at_eof = false,
 		.spaces_before_trailing_comment = 1,
 		.align_assignments = true,
 		.align_comments = true,
+		.align_string_concat = false,
 	};
 }
 
@@ -118,12 +122,16 @@ fn Config? parse_from_file(String file_path) => @pool()
 				}
 			case "else_on_newline":
 				conf.else_on_newline = val.to_bool()!;
+			case "newline_at_eof":
+				conf.newline_at_eof = val.to_bool()!;
 			case "spaces_before_trailing_comment":
 				conf.spaces_before_trailing_comment = (uint)val.to_int()!;
 			case "align_assignments":
 				conf.align_assignments = val.to_bool()!;
 			case "align_comments":
 				conf.align_comments = val.to_bool()!;
+			case "align_string_concat":
+				conf.align_string_concat = val.to_bool()!;
 
 			default:
 				return INVALID_CONFIG~;

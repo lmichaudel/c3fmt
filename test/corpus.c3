@@ -68,10 +68,45 @@ fn void comments() @test {
     test("comments", "test/corpus/comments.c3", "test/corpus/comments_f.c3", conf);
 }
 
+fn void string_concat() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    test("string_concat", "test/corpus/string_concat.c3", "test/corpus/string_concat_f.c3", conf);
+}
+
+fn void string_concat_align() @test {
+    Config conf = c3fmt::default_config();
+    conf.max_line_length = 80;
+    conf.align_string_concat = true;
+    test("string_concat_align", "test/corpus/string_concat.c3", "test/corpus/string_concat_align_f.c3", conf);
+}
+
 fn void alignment() @test {
     Config conf = c3fmt::default_config();
     conf.max_line_length = 180;
     test("alignment", "test/corpus/alignment.c3", "test/corpus/alignment_f.c3", conf);
+}
+
+fn void alignment_wrap_stability() @test {
+    test("alignment_wrap_stability", "test/corpus/alignment_wrap_stability.c3", "test/corpus/alignment_wrap_stability_f.c3");
+}
+
+fn void newline_at_eof() @test {
+    String input = "fn void main() {}";
+
+    Config conf = c3fmt::default_config();
+    assert(!conf.newline_at_eof);
+
+    String without_newline = c3fmt::format_string(mem, input, conf, check_semantic: true)!!;
+    defer without_newline.free(mem);
+    assert(without_newline.len > 0);
+    assert(without_newline[^1] != '\n');
+
+    conf.newline_at_eof = true;
+    String with_newline = c3fmt::format_string(mem, input, conf, check_semantic: true)!!;
+    defer with_newline.free(mem);
+    assert(with_newline.len > 0);
+    assert(with_newline[^1] == '\n');
 }
 
 fn void indent_leak() @test {

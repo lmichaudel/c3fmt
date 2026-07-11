@@ -56,9 +56,11 @@ You can look at [.c3fmt](.c3fmt) for the default configuration.
 | `max_line_length` | Maximum line length before wrapping. | `120` |
 | `brace_style` | The brace style to use: `ALLMAN` or `K&R`. | `ALLMAN` |
 | `else_on_newline` | Whether to put `else` on a new line. | `true` |
+| `newline_at_eof` | Ensure formatted output ends with a newline. | `false` |
 | `spaces_before_trailing_comment` | The number of space inserted before trailing comments | `1` |
 | `align_assignments` | Align `=` and `=>` in consecutive declarations/assignments. | `true` |
 | `align_comments` | Align trailing comments in consecutive lines. | `true` |
+| `align_string_concat` | Align wrapped adjacent string literals under the first literal's column (otherwise indent one level). | `false` |
 
 ## Building
 
@@ -149,4 +151,3 @@ The test suite includes:
 ## Known issues
 
 *(none yet)*
-

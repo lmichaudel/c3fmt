@@ -38,3 +38,40 @@ Pipeline a = {
 		.range = "a very long string that will go beyond 80 words"
 	}
 };
+
+faultdef
+	SAMPLE_ALPHA,
+	SAMPLE_BETA,
+	SAMPLE_GAMMA,
+	SAMPLE_DELTA,
+	SAMPLE_EPSILON,
+	SAMPLE_ZETA,
+	SAMPLE_ETA,
+	SAMPLE_THETA,
+	SAMPLE_IOTA;
+
+fn void wrap_assignment_expr()
+{
+	ParserState* state   = (ParserState*)raw;
+	WorkItem* item       = (WorkItem*)state.owner;
+	Handler handler      = item.handler;
+	bool paused          = (state.flags & SAMPLE_FLAG_DISABLED) != 0;
+	bool ready           = !state.error_code;
+	ulong total_count    = ready ? compute_total_count(context, state, item)
+		: 0;
+	bool should_continue = ready && !paused && (long)item.interval > 0
+		&& total_count <= (ulong)item.remaining_count;
+}
+
+fn void wrap_assignment_expr_stable()
+{
+	ParserState* state   = (ParserState*)raw;
+	WorkItem* item       = (WorkItem*)state.owner;
+	Handler handler      = item.handler;
+	bool paused          = (state.flags & SAMPLE_FLAG_DISABLED) != 0;
+	bool ready           = !state.error_code;
+	ulong total_count    = ready ? compute_total_count(context, state, item)
+		: 0;
+	bool should_continue = ready && !paused && (long)item.interval > 0
+		&& total_count <= (ulong)item.remaining_count;
+}
