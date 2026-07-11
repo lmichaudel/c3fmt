@@ -38,18 +38,27 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Install C3 compiler
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           case "$RUNNER_OS" in
-            Linux)
-              curl -fsSL -o c3.tar.gz $C3_BASE_URL/c3-linux.tar.gz
-              tar -xzf c3.tar.gz ;;
-            macOS)
-              curl -fsSL -o c3.zip $C3_BASE_URL/c3-macos.zip
-              tar -xf c3.zip ;;
-            Windows)
-              curl -fsSL -o c3.zip $C3_BASE_URL/c3-windows.zip
-              unzip -q c3.zip ;;
+            Linux)   ARCHIVE="c3-linux.tar.gz" ;;
+            macOS)   ARCHIVE="c3-macos.zip" ;;
+            Windows) ARCHIVE="c3-windows.zip" ;;
           esac
+
+          # Get the tag of the absolute latest release (including prereleases)
+          TAG=$(gh api repos/c3lang/c3c/releases -q '.[0].tag_name')
+
+          echo "Downloading C3 compiler from tag: $TAG"
+          gh release download "$TAG" --repo c3lang/c3c --pattern "$ARCHIVE"
+
+          if [[ "$ARCHIVE" == *.tar.gz ]]; then
+            tar -xzf "$ARCHIVE"
+          else
+            unzip -q "$ARCHIVE"
+          fi
+
           echo "$PWD/c3" >> $GITHUB_PATH
 
       - name: Build tree-sitter static library
