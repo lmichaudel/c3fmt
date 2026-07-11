@@ -145,7 +145,7 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 
 			raw_text = raw_text.trim_right();
 			if (raw_text != "") self.buf.text(raw_text);
-			
+
 			self.buf.newline();
 			foreach (tok : structural_tokens)
 			{
@@ -210,10 +210,10 @@ fn void? C3Fmt.format(&self, bool check = false)
 		if (start <= end && end <= self.source_code.len)
 		{
 			String raw_text = self.source_code[start : end - start];
-			
+
 			raw_text = raw_text.trim_right();
 			if (raw_text != "") self.buf.text(raw_text);
-			
+
 			self.buf.newline();
 			foreach (tok : structural_tokens)
 			{
@@ -823,9 +823,9 @@ fn void C3Fmt.process_composite(
 				{
 					self.dedent();
 				}
-				
+
 				self.buf.text(text);
-				
+
 				if (respect_input_newlines && text == "{")
 				{
 					self.indent();
@@ -1269,9 +1269,9 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
 	self.check_directive(comment, node);
 
 	self.buf.text("/*");
-	self.buf.space();
+	if (!comment.starts_with("*")) self.buf.space();
 	self.buf.text(comment);
-	self.buf.space();
+	if (!comment.ends_with("*")) self.buf.space();
 	self.buf.text("*/");
 
 	self.check_directive_after(comment, node);
@@ -1289,7 +1289,7 @@ fn void C3Fmt.process_line_comment(&self, TSNode node, bool is_trailing = false)
 		? self.extract_comment_string(node)
 		: node.get_text(self.source_code)[2..].strip_prefix(" ").trim_right();
 	String comment = body.trim();
-	
+
 	self.check_directive(comment, node);
 
 	self.buf.text(node.get_text(self.source_code)[0:2]);
