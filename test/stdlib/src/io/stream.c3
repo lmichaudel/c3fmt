@@ -4,7 +4,8 @@ import std::math;
 
 
 alias SeekFn = fn void?(void*, long offset, SeekOrigin whence = FROM_START);
-
+alias WriteFn = fn sz?(void*, char[] bytes);
+alias WriteByteFn = fn void?(void*, char c);
 
 interface InStream
 {
@@ -37,9 +38,9 @@ fn long? available(InStream s)
 	if (&s.seek && &s.cursor)
 	{
 		long curr = s.cursor()!;
+		defer (void)s.seek(curr);
 		s.seek(0, FROM_END)!;
 		long len = s.cursor()!;
-		s.seek(curr)!;
 		return len - curr;
 	}
 	return io::UNSUPPORTED_OPERATION~;
@@ -139,17 +140,19 @@ macro char[]? read_fully(Allocator allocator, stream)
 *>
 macro sz? write_all(stream, char[] buffer)
 {
-	sz len = buffer.len;
-	if (!len) return 0;
-	sz written;
-	while (written < len)
-	{
-		sz write = stream.write(buffer[written..])!;
-		if (!write) break;
-		written += write;
-	}
-	if (written != buffer.len) return INCOMPLETE_WRITE~;
-	return written;
+	return fn sz?($Typeof(stream) s, char[] buffer) {
+		sz len = buffer.len;
+		if (!len) return 0;
+		sz written;
+		while (written < len)
+		{
+			sz write = s.write(buffer[written..])!;
+			if (!write) break;
+			written += write;
+		}
+		if (written != buffer.len) return INCOMPLETE_WRITE~;
+		return written;
+	}(stream, buffer);
 }
 
 <*
@@ -178,7 +181,7 @@ macro sz? read_using_read_byte(s, char[] buffer)
 macro void? write_byte_using_write(s, char c)
 {
 	char[1] buff = { c };
-	s.write(&buff)!;
+	if (s.write(&buff)! == 0) return INCOMPLETE_WRITE~;
 }
 
 <*
@@ -242,8 +245,6 @@ macro long? copy_through_buffer(InStream in, OutStream dst, char[] buffer) @loca
 	}
 }
 
-const char[*] MAX_VARS @private = { [1] = 2, [2] = 3, [4] = 5, [8] = 10, [16] = 19 };
-
 <*
  @require @is_instream(stream)
  @require @kindof(x_ptr) == POINTER && @kindof(*x_ptr).is_int()
@@ -255,8 +256,9 @@ macro sz? read_varint(stream, x_ptr)
 
 fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @private
 {
-	const MAX = MAX_VARS[Type::size];
-	Type x;
+	const MAX = 19;
+	const LAST_BYTE = 3;
+	uint128 u;
 	uint shift;
 	sz n;
 	for (sz i = 0; i < MAX; i++)
@@ -270,15 +272,16 @@ fn sz? read_varint_generic(VarInStream stream, Type* ptr) <VarInStream, Type> @p
 		n++;
 		if (c & 0x80 == 0)
 		{
-			if (i + 1 == MAX && c > 1) break;
-			x |= (Type)c << shift;
+			if (i + 1 == MAX && c > LAST_BYTE) break;
+			u |= (uint128)c << shift;
 			$if Type::kind == SIGNED_INT:
-				x = x & 1 == 0 ? x >> 1 : ~(x >> 1);
+				*ptr = u & 1 == 0 ? (Type)(u >> 1) : -(Type)(u >> 1);
+			$else
+				*ptr = (Type)u;
 			$endif
-			*ptr = x;
 			return n;
 		}
-		x |= (Type)(c & 0x7F) << shift;
+		u |= (uint128)(c & 0x7F) << shift;
 		shift += 7;
 	}
 	return math::OVERFLOW~;
@@ -296,16 +299,22 @@ macro sz? write_varint(stream, x)
 
 fn sz? write_varint_generic(VarOutStream stream, Type x) <VarOutStream, Type> @private
 {
-	const MAX = MAX_VARS[Type::size];
+	const MAX = 19;
 	char[MAX] buffer @noinit;
 	sz i;
-	while (x >= 0x80)
+	$if Type::kind == SIGNED_INT:
+		uint128 u = ((uint128)(x < 0 ? -x : x)) << 1;
+		if (x < 0) u |= 1;
+	$else
+		uint128 u = (uint128)x;
+	$endif
+	while (u >= 0x80)
 	{
-		buffer[i] = (char)(x | 0x80);
-		x >>= 7;
+		buffer[i] = (char)(u | 0x80);
+		u >>= 7;
 		i++;
 	}
-	buffer[i] = (char)x;
+	buffer[i] = (char)u;
 	return write_all(stream, buffer[:i + 1]);
 }
 
@@ -589,7 +598,7 @@ macro void? write_le_uint128(stream, uint128 s)
 macro sz? write_tiny_bytearray(stream, char[] data)
 {
 	stream.write_byte((char)data.len)!;
-	return stream.write(data) + 1;
+	return write_all(stream, data) + 1;
 }
 
 <*
@@ -611,7 +620,7 @@ macro char[]? read_tiny_bytearray(stream, Allocator allocator)
 macro sz? write_short_bytearray(stream, char[] data)
 {
 	io::write_be_ushort(stream, (ushort)data.len)!;
-	return stream.write(data) + 2;
+	return write_all(stream, data) + 2;
 }
 
 <*
