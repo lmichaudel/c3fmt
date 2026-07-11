@@ -116,7 +116,7 @@ fn usz C3Fmt.current_column(&self)
 
 fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 {
-	if (comment == "c3fmt on" && !self.formatter_enabled)
+	if (comment.starts_with("c3fmt on") && !self.formatter_enabled)
 	{
 		// must keep indent/dedent tokens
 		TokenBuffer structural_tokens;
@@ -143,9 +143,34 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 		{
 			String raw_text = self.source_code[start : end - start];
 
-			raw_text = raw_text.trim_right();
+			// Trim spaces and tabs from the end to remove manual indentation before the directive
+			int trim_len = 0;
+			for (int j = (int)raw_text.len - 1; j >= 0; j--)
+			{
+				char c = raw_text[j];
+				if (c == ' ' || c == '\t')
+				{
+					trim_len++;
+				}
+				else
+				{
+					break;
+				}
+			}
+			raw_text = raw_text[0 : raw_text.len - trim_len];
+
+			// Strip exactly one trailing newline, as self.buf.newline() will insert one right after
+			if (raw_text.ends_with("\r\n"))
+			{
+				raw_text = raw_text[0 : raw_text.len - 2];
+			}
+			else if (raw_text.ends_with("\n"))
+			{
+				raw_text = raw_text[0 : raw_text.len - 1];
+			}
+
 			if (raw_text != "") self.buf.text(raw_text);
-			
+
 			self.buf.newline();
 			foreach (tok : structural_tokens)
 			{
@@ -159,7 +184,7 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 
 fn void C3Fmt.check_directive_after(&self, String comment, TSNode node)
 {
-	if (comment == "c3fmt off" && self.formatter_enabled)
+	if (comment.starts_with("c3fmt off") && self.formatter_enabled)
 	{
 		self.formatter_enabled = false;
 		self.disabled_start_byte = node.end_byte();
@@ -210,10 +235,10 @@ fn void? C3Fmt.format(&self, bool check = false)
 		if (start <= end && end <= self.source_code.len)
 		{
 			String raw_text = self.source_code[start : end - start];
-			
+
 			raw_text = raw_text.trim_right();
 			if (raw_text != "") self.buf.text(raw_text);
-			
+
 			self.buf.newline();
 			foreach (tok : structural_tokens)
 			{
@@ -312,7 +337,10 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 				return false;
 			}
 
-			self.buf.space();
+			for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) {
+				self.buf.space();
+			}
+
 			self.process_comment(child, is_trailing: true);
 			self.buf.newline();
 
@@ -328,7 +356,11 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 				if (popped_indent) self.dedent();
 				return false;
 			}
-			self.buf.space();
+
+			for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) {
+				self.buf.space();
+			}
+
 			self.process_comment(child, is_trailing: true);
 			self.buf.newline();
 		}
@@ -598,6 +630,7 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 
 	// Final pass
 	uint i = start_index;
+	bool align_consecutive_comments = false;
 	while (i < end_index)
 	{
 		TSNode child = ts::node_named_child(parent, i);
@@ -610,7 +643,14 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			for (int j = 0; j < blank_line_amount - 1; ++j) self.buf.push(token::newline());
 		}
 
+		if (blank_line_amount > 1)
+		{
+			align_consecutive_comments = false;
+		}
+
 		TSNode op = find_assignment_op(child);
+		bool is_aligned_standalone_comment = false;
+
 		if (!ts::node_is_null(op) && max_op_col > 0)
 		{
 			TSNode target = declaration_target(child);
@@ -623,7 +663,6 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 
 			self.buf.push(token::align(max_op_col));
 			self.buf.push(token::space());
-
 			if (!ts::node_is_null(right))
 			{
 				self.buf.push(token::text(op.get_text(self.source_code)));
@@ -631,7 +670,6 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			}
 
 			TSNode right_to_use = ts::node_is_null(right) ? op : right;
-
 			// Value alignment logic for math signs
 			if (!ts::node_is_null(right_to_use)) {
 				String text = right_to_use.get_text(self.source_code);
@@ -644,7 +682,6 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 						TSNode r2 = (t2.type() == "macro_declaration" || !t2.has_child_with_field("right")) ? (TSNode){} : t2.get_child_with_field("right");
 						// For macros, the 'right' side is the body, but it starts with =>
 						if (ts::node_is_null(r2) && t2.type() == "macro_declaration") r2 = op2;
-
 						if (!ts::node_is_null(r2) && r2.get_text(self.source_code).starts_with("-")) {
 							has_negatives = true;
 							break;
@@ -704,14 +741,28 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			{
 				self.buf.text(",");
 			}
+
+			align_consecutive_comments = false;
+		}
+		else if (child.is_comment() && max_comment_col > 0 && self.config.align_comments && align_consecutive_comments)
+		{
+			self.buf.push(token::align(max_comment_col));
+			for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k)
+			{
+				self.buf.space();
+			}
+			self.process_comment(child, is_trailing: true);
+			self.buf.push(token::newline());
+			is_aligned_standalone_comment = true;
 		}
 		else
 		{
 			self.process_node(child, false);
+			align_consecutive_comments = false;
 		}
 
 		// Handle trailing comment alignment
-		if (i + 1 < named_child_count)
+		if (i + 1 < named_child_count && !is_aligned_standalone_comment)
 		{
 			TSNode next = ts::node_named_child(parent, i + 1);
 			if (next.start_point_row() == child.end_point_row() && next.is_comment())
@@ -720,9 +771,10 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 				{
 					self.buf.push(token::align(max_comment_col));
 				}
-				self.buf.push(token::space());
+				for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) self.buf.space();
 				self.process_comment(next, is_trailing: true);
 				i++; // Skip comment in next iteration
+				align_consecutive_comments = true;
 			}
 		}
 
@@ -851,7 +903,14 @@ fn void C3Fmt.process_composite(
 			}
 			else
 			{
-				self.buf.space();
+				if (child.type() == "line_comment")
+				{
+					for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) self.buf.space();
+				}
+				else
+				{
+					self.buf.space();
+				}
 			}
 		}
 
@@ -896,9 +955,9 @@ fn void C3Fmt.process_composite(
 				{
 					self.dedent();
 				}
-				
+
 				self.buf.text(text);
-				
+
 				if (respect_input_newlines && text == "{")
 				{
 					self.indent();
@@ -1066,7 +1125,9 @@ fn void C3Fmt.process_uncanny_scope(
 					TSNode next = ts::node_child(node, i + 1);
 					if (next.is_comment() && ts::same_line(child, next))
 					{
-						self.buf.space();
+						for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) {
+							self.buf.space();
+						}
 						self.process_comment(next, is_trailing: true);
 						i++; // advance
 					}
@@ -1180,7 +1241,9 @@ fn void C3Fmt.process_ct_case_stmt(&self, TSNode node)
 						child
 					)) // as trailing
 				{
-					self.buf.space();
+					for (uint k = 0; k < self.config.spaces_before_trailing_comment; ++k) {
+						self.buf.space();
+					}
 					self.process_line_comment(child, is_trailing: true);
 					self.buf.newline();
 					nl_appended = true;
@@ -1391,9 +1454,9 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
 	self.check_directive(comment, node);
 
 	self.buf.text("/*");
-	self.buf.space();
+	if (!comment.starts_with("*")) self.buf.space();
 	self.buf.text(comment);
-	self.buf.space();
+	if (!comment.ends_with("*")) self.buf.space();
 	self.buf.text("*/");
 
 	self.check_directive_after(comment, node);
@@ -1411,7 +1474,7 @@ fn void C3Fmt.process_line_comment(&self, TSNode node, bool is_trailing = false)
 		? self.extract_comment_string(node)
 		: node.get_text(self.source_code)[2..].strip_prefix(" ").trim_right();
 	String comment = body.trim();
-	
+
 	self.check_directive(comment, node);
 
 	self.buf.text(node.get_text(self.source_code)[0:2]);

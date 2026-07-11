@@ -26,6 +26,6 @@ fn void main()
 	// }
 
 	int a   = 1; // comment 1
-	// in between
+	             // in between
 	int bbb = 2; // comment 2
 }

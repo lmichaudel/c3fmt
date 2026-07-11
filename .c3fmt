@@ -9,5 +9,7 @@ brace_style: ALLMAN
 else_on_newline: true
 newline_at_eof: false
 
+spaces_before_trailing_comment: 1
+
 align_assignments: true
 align_comments: true
