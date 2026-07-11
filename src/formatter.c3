@@ -143,7 +143,32 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 		{
 			String raw_text = self.source_code[start : end - start];
 
-			raw_text = raw_text.trim_right();
+			// Trim spaces and tabs from the end to remove manual indentation before the directive
+			int trim_len = 0;
+			for (int j = (int)raw_text.len - 1; j >= 0; j--)
+			{
+				char c = raw_text[j];
+				if (c == ' ' || c == '\t')
+				{
+					trim_len++;
+				}
+				else
+				{
+					break;
+				}
+			}
+			raw_text = raw_text[0 : raw_text.len - trim_len];
+
+			// Strip exactly one trailing newline, as self.buf.newline() will insert one right after
+			if (raw_text.ends_with("\r\n"))
+			{
+				raw_text = raw_text[0 : raw_text.len - 2];
+			}
+			else if (raw_text.ends_with("\n"))
+			{
+				raw_text = raw_text[0 : raw_text.len - 1];
+			}
+
 			if (raw_text != "") self.buf.text(raw_text);
 
 			self.buf.newline();
