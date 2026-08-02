@@ -10,7 +10,6 @@ on:
 
 env:
   MACOSX_DEPLOYMENT_TARGET: "11.0"
-  C3_BASE_URL: https://github.com/c3lang/c3c/releases/download/latest-prerelease-tag
 
 jobs:
   build-and-test:
@@ -37,29 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install C3 compiler
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          case "$RUNNER_OS" in
-            Linux)   ARCHIVE="c3-linux.tar.gz" ;;
-            macOS)   ARCHIVE="c3-macos.zip" ;;
-            Windows) ARCHIVE="c3-windows.zip" ;;
-          esac
-
-          # Get the tag of the absolute latest release (including prereleases)
-          TAG=$(gh api repos/c3lang/c3c/releases -q '.[0].tag_name')
-
-          echo "Downloading C3 compiler from tag: $TAG"
-          gh release download "$TAG" --repo c3lang/c3c --pattern "$ARCHIVE"
-
-          if [[ "$ARCHIVE" == *.tar.gz ]]; then
-            tar -xzf "$ARCHIVE"
-          else
-            unzip -q "$ARCHIVE"
-          fi
-
-          echo "$PWD/c3" >> $GITHUB_PATH
+      - uses: ManuLinares/setup-c3@v1
+        with:
+          version: nightly
 
       - name: Build tree-sitter static library
         run: |

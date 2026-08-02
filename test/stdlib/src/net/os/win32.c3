@@ -1,4 +1,4 @@
-module std::net::os @if(env::WIN32);
+module std::net::os @feat(WIN32);
 import std::os, std::io, libc, std::thread;
 import std::core::mem;
 import std::os::win32;
@@ -118,6 +118,11 @@ fn fault convert_error(WSAError error)
 fn fault socket_error()
 {
 	return convert_error(win32::wsaGetLastError());
+}
+
+fn fault connect_error(CInt error)
+{
+	return convert_error((WSAError)error);
 }
 
 const CUShort POLLIN      = win32::POLLIN;

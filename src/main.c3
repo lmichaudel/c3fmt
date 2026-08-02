@@ -27,7 +27,7 @@ fn String? format_string(
 module c3fmt::executable;
 
 import c3fmt;
-import opt;
+import std::os::argparse;
 import std;
 import libc;
 
@@ -111,32 +111,20 @@ fn int main(String[] args)
 	}
 
 	bool version_asked;
+	String[4096] positional_files;
 	// c3fmt off
-	int? arg_last_parsed = opt::@parse(//
+	sz? arg_last_parsed = argparse::@parse(
 		args, //
-		"h*", "help", null, //
-		"v", "version", &version_asked, //
-		null,
-		"in-place",
-		&cli_options.in_place, //
-		null,
-		"stdin",
-		&cli_options.stdin, //
-		null,
-		"stdin-filepath",
-		&cli_options.stdin_filepath, //
-		null,
-		"stdout",
-		&cli_options.stdout, //
-		null,
-		"config?",
-		&cli_options.config, //
-		null,
-		"default",
-		&cli_options.force_default_config, //
-		null,
-		"check",
-		&cli_options.check
+		"h*", "help*",          "Show this help.", &cli_options.need_help,
+		"v",  "version",        "Show current version.", &version_asked,
+		"i",  "in-place",       "Format files in place.", &cli_options.in_place,
+		      "stdin",          "Read input from stdin.", &cli_options.stdin,
+		      "stdin-filepath", "File path hint for stdin mode (used to find .c3fmt config).", &cli_options.stdin_filepath,
+		      "stdout",         "Output result to stdout.", &cli_options.stdout,
+		"c",  "config",         "Specify a config file.", &cli_options.config,
+		      "default",        "Force default config.", &cli_options.force_default_config,
+		      "check",          "Finish with error if files are not formatted.", &cli_options.check,
+		&positional_files
 	);
 	// c3fmt on
 
@@ -144,25 +132,23 @@ fn int main(String[] args)
 	{
 		switch (err)
 		{
-			case opt::HELP_REQUESTED:
-			case opt::MISSING_ARGUMENT:
-			case opt::ILLEGAL_OPTION:
-			    io::printfn("c3fmt: A customizable code formatter for the C3 language.");
-                io::printfn("Author: Lucas Michaudel <lucas.michaudel@gmail.com>");
-                io::printfn("Repository: https://github.com/lmichaudel/c3fmt");
-                io::printf("\n");
-				io::printfn("Usage: c3fmt [<options>] <files>");
-				io::printf("\n");
-				io::printfn("Options:");
-				io::printfn("\t-h, --help               - Show this help.");
-				io::printfn("\t-v, --version            - Show current version.");
-				io::printfn("\t--in-place               - Format files in place.");
-				io::printfn("\t--stdin                  - Read input from stdin.");
-				io::printfn("\t--stdin-filepath=<path>  - File path hint for stdin mode (used to find .c3fmt config).");
-				io::printfn("\t--stdout                 - Output result to stdout.");
-				io::printfn("\t--config=<path>          - Specify a config file.");
-				io::printfn("\t--default                - Force default config.");
-				io::printfn("\t--check                  - Finish with error if files are not formatted.");
+			case argparse::HELP_REQUESTED:
+				io::printn();
+				io::printfn("┌─────────────────────────────────────────────────────┐");
+				io::printfn("│ Code formatter for the C3 language                  │");
+				io::printfn("├─────────────────────────────────────────────────────┤");
+				io::printfn("│ Author: Lucas Michaudel <lucas.michaudel@gmail.com> │");
+				io::printfn("│ Repository: https://github.com/lmichaudel/c3fmt     │");
+				io::printfn("└─────────────────────────────────────────────────────┘");
+				io::printn();
+				return 0;
+			case argparse::MISSING_ARGUMENT:
+				io::eprintfn("c3fmt: Option '%s%s' requires an argument.", argparse::last_opt.len > 1 ? "--" : "-", argparse::last_opt);
+				io::eprintfn("Try '-h' or '--help' for usage information.");
+				return 1;
+			case argparse::ILLEGAL_OPTION:
+				io::eprintfn("c3fmt: Unrecognized option '%s%s'.", argparse::last_opt.len > 1 ? "--" : "-", argparse::last_opt);
+				io::eprintfn("Try '-h' or '--help' for usage information.");
 				return 1;
 			default:
 				return 1;
@@ -243,7 +229,7 @@ fn int main(String[] args)
 		return 0;
 	}
 
-	if (arg_last_parsed == args.len)
+	if (positional_files[0] == "")
 	{
 		io::eprintfn("No input file or directory provided.");
 		return 1;
@@ -264,9 +250,9 @@ fn int main(String[] args)
 		files.free();
 	}
 
-	for (int i = arg_last_parsed; i < args.len; ++i)
+	foreach (entry : positional_files)
 	{
-		String entry = args[i];
+		if (entry == "") break;
 		fast_scan(entry, &files);
 	}
 

@@ -20,14 +20,15 @@ c3fmt [<options>] <files/directories>
 ```
 Options:
 ```
--h, --help       - Show this help.
--v, --version    - Show current version.
---in-place       - Format files in place.
---stdin          - Read input from stdin.
---stdout         - Output result to stdout.
---config=<path>  - Specify a config file.
---default        - Force default config.
---check          - Finish with error if files are not formatted.
+-h, --help               - Show this help.
+-v, --version            - Show current version.
+--in-place               - Format files in place.
+--stdin                  - Read input from stdin.
+--stdin-filepath=<path>  - File path hint for stdin mode (used to find .c3fmt config).
+--stdout                 - Output result to stdout.
+--config=<path>          - Specify a config file.
+--default                - Force default config.
+--check                  - Finish with error if files are not formatted.
 ```
 
 ### Ignoring sections

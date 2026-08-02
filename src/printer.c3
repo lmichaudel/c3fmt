@@ -193,7 +193,7 @@ fn void C3Fmt.print(&self)
 		return;
 	}
 
-	$if $feature(DEBUG):
+	$if $feat(DEBUG):
 		dbg(self.buf.array_view());
 	$endif
 
@@ -304,7 +304,7 @@ fn usz C3Fmt.calculate_line_length(&self, Token[] tokens, usz indent_level)
 	return line_length;
 }
 
-fn void dbg(Token[] tokens) @if($feature(DEBUG))
+fn void dbg(Token[] tokens) @feat(DEBUG)
 {
 	foreach (tok : tokens)
 	{
@@ -338,7 +338,7 @@ fn void dbg(Token[] tokens) @if($feature(DEBUG))
 
 fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 {
-	$if $feature(DEBUG):
+	$if $feat(DEBUG):
 		dbg(tokens);
 	$endif
 	if(tokens.len == 0) return;

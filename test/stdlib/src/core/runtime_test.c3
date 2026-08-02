@@ -90,12 +90,12 @@ fn bool terminal_has_ansi_codes() @private => @pool()
 	$endif
 }
 
-fn void sig_bus_error(CInt i, void*, void* context) @local @if(env::POSIX)
+fn void sig_bus_error(CInt i, void*, void* context) @local @feat(POSIX)
 {
 	panic_test("Bus error", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
 
-fn void sig_segmentation_fault(CInt i, void*, void* context) @local @if(env::POSIX)
+fn void sig_segmentation_fault(CInt i, void*, void* context) @local @feat(POSIX)
 {
 	panic_test("Segmentation fault", "Unknown", "Unknown", 1, posix::stack_instruction(context));
 }
@@ -317,7 +317,7 @@ $endif
 			io::printf("%s ", name.str_view());
 		}
 		(void)io::stdout().flush();
-		TrackingAllocator mem;
+		TrackingAllocator* mem = alloc::new(context.stored.allocator, TrackingAllocator);
 
 		mem.init(context.stored.allocator);
 		Clock start_time = clock::now();
@@ -327,7 +327,7 @@ $endif
 			if (!thread::current().equals(main)) thread::exit(-1);
 			mute_output();
 			mem.clear();
-			if (context.check_leaks) allocators::thread_allocator = &mem;
+			if (context.check_leaks) allocators::thread_allocator = mem;
 			@pool()
 			{
 				unit.func();
@@ -358,6 +358,7 @@ $endif
 			}
 		}
 		mem.free();
+		alloc::free(context.stored.allocator, mem);
 	}
 	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count != 1 ? "s" : "");
 

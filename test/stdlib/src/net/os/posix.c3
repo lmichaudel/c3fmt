@@ -1,4 +1,4 @@
-module std::net::os @if(env::POSIX && SUPPORTS_INET);
+module std::net::os @feat(POSIX);
 import std::io, libc;
 
 const int F_GETFL = 3;
@@ -55,6 +55,11 @@ fn fault convert_error(Errno error)
 fn fault socket_error()
 {
 	return convert_error(libc::errno());
+}
+
+fn fault connect_error(CInt error)
+{
+	return convert_error((Errno)error);
 }
 
 macro bool NativeSocket.is_valid(self)
