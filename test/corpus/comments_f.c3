@@ -1,3 +1,13 @@
+constdef ErrorCode : long
+{
+	<*
+	 Defined in the LSP specification, but in the range reserved for JSON-RPC
+	 error codes, namely the -32099 to -32000 "Reserved for
+	 implementation-defined server-errors"
+	*>
+	SERVER_NOT_INITIALIZED = -32002
+}
+
 /* a cool but one line block */
 
 /* a cool multiline block
@@ -16,6 +26,15 @@ fn void main()
 	}
 
 	mystruct/* i'm a psycho */.field = 10;
+}
+
+<*
+ This is a very long doc comment line that exceeds the max column limit of
+ eighty characters and will wrap nicely.
+*>
+fn void long_doc_comment_wrap()
+{
+	int x = 1;
 }
 
 <*

@@ -5,6 +5,9 @@ import tree_sitter_c3;
 
 import c3fmt::printer;
 import c3fmt::token;
+import std::collections::list;
+
+alias StringList = list::List {String};
 
 struct C3Fmt
 {
@@ -933,13 +936,17 @@ fn void C3Fmt.process_composite(
 			{
 				self.process_block_comment(child);
 			}
-			if (child.type() == "line_comment")
+			else if (child.type() == "line_comment")
 			{
 				String comment_str = self.extract_comment_string(child);
 				self.check_directive(comment_str, child);
 				self.buf.inline_comment(comment_str);
 				self.check_directive_after(comment_str, child);
 				found_inline = true;
+			}
+			else if (child.type() == "doc_comment")
+			{
+				unreachable();
 			}
 		}
 		else
@@ -1493,6 +1500,14 @@ fn void C3Fmt.process_doc_comment(&self, TSNode node)
 	uint named_count = ts::node_named_child_count(node);
 
 	bool is_single_line = node.start_point().row == node.end_point().row;
+	if (is_single_line && self.config.max_line_length > 0)
+	{
+		usz indent_cols = (usz)self.indent_level * (usz)(self.config.use_tabs ? self.config.tab_size : self.config.indent_width);
+		if (indent_cols + node.get_text(self.source_code).len > self.config.max_line_length)
+		{
+			is_single_line = false;
+		}
+	}
 
 	self.buf.text("<*");
 	if (is_single_line)
@@ -1544,7 +1559,7 @@ fn void C3Fmt.process_doc_comment(&self, TSNode node)
 			if (child.type() == "doc_comment_contract") {
 				self.process_composite(child, skip_space_type: { "(", ")", "," }, skip_space_if_after: { "(" });
 			} else {
-				self.buf.text(child.get_text(self.source_code));
+				self.buf.text(child.get_text(self.source_code).trim());
 			}
 		}
 		else
@@ -1565,6 +1580,90 @@ fn void C3Fmt.process_doc_comment(&self, TSNode node)
 	self.buf.text("*>");
 	self.buf.newline();
 	self.wrapping_enabled = true;
+}
+
+fn void C3Fmt.process_doc_comment_text(&self, TSNode node)
+{
+    String raw_text = node.get_text(self.source_code);
+    String[] lines = raw_text.split(mem, "\n");
+    defer free(lines);
+
+    usz indent_cols = (usz)self.indent_level * (usz)(self.config.use_tabs ? self.config.tab_size : self.config.indent_width);
+    usz prefix_cols = indent_cols + 1;
+    usz max_len = self.config.max_line_length;
+    usz target_width = (max_len > prefix_cols) ? (max_len - prefix_cols) : 0;
+
+    sz start = 0;
+    while (start < lines.len && lines[start].trim() == "") start++;
+    sz end = (sz)lines.len - 1;
+    while (end >= start && lines[end].trim() == "") end--;
+
+    if (start > end) return;
+
+    bool first_emitted_line = true;
+
+    for (sz i = start; i <= end; ++i)
+    {
+        String line = lines[i].trim();
+
+        if (line == "")
+        {
+            self.buf.newline();
+            first_emitted_line = false;
+            continue;
+        }
+
+        if (max_len > 0 && target_width > 0 && (usz)line.len > target_width)
+        {
+            String[] words = line.split(mem, " ");
+            defer free(words);
+
+            usz current_line_len = 0;
+
+            foreach (w : words)
+            {
+                if (w == "") continue;
+
+                if (current_line_len > 0)
+                {
+                    if (current_line_len + 1 + (usz)w.len > target_width)
+                    {
+                        self.buf.newline();
+                        first_emitted_line = false;
+
+                        if (!first_emitted_line) self.buf.space();
+                        self.buf.text(w);
+                        current_line_len = (usz)w.len;
+                    }
+                    else
+                    {
+                        self.buf.space();
+                        self.buf.text(w);
+                        current_line_len += 1 + (usz)w.len;
+                    }
+                }
+                else
+                {
+                    if (!first_emitted_line) self.buf.space();
+                    self.buf.text(w);
+                    current_line_len = (usz)w.len;
+                }
+            }
+
+            if (current_line_len > 0)
+            {
+                self.buf.newline();
+                first_emitted_line = false;
+            }
+        }
+        else
+        {
+            if (!first_emitted_line) self.buf.space();
+            self.buf.text(line);
+            self.buf.newline();
+            first_emitted_line = false;
+        }
+    }
 }
 
 fn void C3Fmt.collapse_single_line(&self, sz start_idx)
@@ -2556,8 +2655,7 @@ fn void C3Fmt.process_node(
 		case "doc_comment":
 			self.process_doc_comment(node);
 		case "doc_comment_text":
-			self.buf.text(node.get_text(self.source_code));
-			self.buf.newline();
+			self.process_doc_comment_text(node);
 		case "doc_comment_contract":
 			self.process_composite(
 				node,

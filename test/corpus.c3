@@ -1,6 +1,27 @@
 import c3fmt::executable;
 import std::io;
 
+fn void eprint_escaped(char c)
+{
+    switch (c)
+    {
+        case '\n': io::eprint("\\n");
+        case '\r': io::eprint("\\r");
+        case '\t': io::eprint("\\t");
+        case '\0': io::eprint("\\0");
+        case ' ':  io::eprint("' '");
+        default:
+            if (c < 32 || c > 126)
+            {
+                io::eprintf("\\x%02X", (uint)c);
+            }
+            else
+            {
+                io::eprintf("'%c'", c);
+            }
+    }
+}
+
 macro test($name, $input_path, $solution_path, Config config = c3fmt::default_config())
 {
     String raw_input = (String)file::load(mem, $input_path)!!;
@@ -16,23 +37,72 @@ macro test($name, $input_path, $solution_path, Config config = c3fmt::default_co
     String formatted = c3fmt::format_string(mem, input, config, check_semantic: true)!!.trim();
     defer formatted.free(mem);
 
-    int len = solution.len;
-    if (formatted.len != len) len = (int)min(formatted.len, len);
+    sz min_len = min(solution.len, formatted.len);
 
     int line = 0;
-    for (sz i = 0; i < len; ++i)
+    sz line_start = 0;
+
+    for (sz i = 0; i < min_len; ++i)
     {
         if (solution[i] != formatted[i])
         {
-            io::eprintfn("For context, here is the output :");
-            io::eprintfn("%s", formatted);
-            io::eprintfn("Character mismatch expected:'%c' got:'%c' on line %d.", solution[i], formatted[i], line + 1);
-            assert(false);
+            sz sol_end = i;
+            while (sol_end < solution.len && solution[sol_end] != '\n') sol_end++;
+            String sol_line = solution[line_start..sol_end];
+
+            sz fmt_start = i;
+            while (fmt_start > 0 && formatted[fmt_start - 1] != '\n') fmt_start--;
+            sz fmt_end = i;
+            while (fmt_end < formatted.len && formatted[fmt_end] != '\n') fmt_end++;
+            String fmt_line = formatted[fmt_start..fmt_end];
+
+            sz col = i - line_start;
+
+            io::eprintfn("\n[TEST FAILURE: %s] Mismatch at index %d (Line %d, Col %d):", $name, i, line + 1, col + 1);
+
+            io::eprint("  Expected char: ");
+            eprint_escaped(solution[i]);
+            io::eprintfn(" (0x%02X)", (uint)solution[i]);
+
+            io::eprint("  Got char:      ");
+            eprint_escaped(formatted[i]);
+            io::eprintfn(" (0x%02X)", (uint)formatted[i]);
+
+            io::eprintfn("\n  Expected line: %s", sol_line);
+            io::eprintfn("  Got line:      %s", fmt_line);
+
+            io::eprint("                 ");
+            for (sz c = 0; c < col; ++c)
+            {
+                io::eprint(fmt_line[c] == '\t' ? "\t" : " ");
+            }
+            io::eprintfn("^");
+
+            assert(false, "Formatter output mismatch");
         }
-        if (solution[i] == '\n') line++;
+
+        if (solution[i] == '\n')
+        {
+            line++;
+            line_start = i + 1;
+        }
     }
 
-    assert(formatted == solution, $name +++ " test failed!");
+    if (solution.len != formatted.len)
+    {
+        io::eprintfn("\n[TEST FAILURE: %s] String length mismatch! Expected %d chars, got %d chars.", $name, solution.len, formatted.len);
+        if (formatted.len < solution.len)
+        {
+            io::eprintfn("  Output was truncated early at index %d (Line %d).", formatted.len, line + 1);
+        }
+        else
+        {
+            io::eprintfn("  Output has extra trailing characters starting at index %d.", solution.len);
+        }
+        assert(false, "Formatter output length mismatch");
+    }
+
+    test::eq(formatted, solution);
 }
 
 
