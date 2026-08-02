@@ -130,3 +130,21 @@ fn bool TSNode.contains_node(self, TSNode other)
 	if (ts::node_is_null(self) || ts::node_is_null(other)) return false;
 	return other.start_byte() >= self.start_byte() && other.end_byte() <= self.end_byte();
 }
+
+fn bool TSNode.ends_with_trailing_comma(self, String closing_delimiter)
+{
+	for (int i = (int)ts::node_child_count(self) - 1; i >= 0; i--)
+	{
+		TSNode child = ts::node_child(self, (uint)i);
+		String type  = child.type();
+
+		if (type == closing_delimiter || child.is_comment())
+		{
+			continue;
+		}
+
+		return type == ",";
+	}
+
+	return false;
+}
