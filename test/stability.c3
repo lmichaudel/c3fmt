@@ -35,9 +35,9 @@ fn void stability_worker_task(any[] args) => @pool_init(mem, 1024 * 1024)
 		String input = (String)file::load(mem, path_s)!!;
 		String? formatted = c3fmt::format_string(mem, input, check_semantic: true);
 
-		if (catch excuse = formatted)
+		if (catch exc = formatted)
 		{
-			io::eprintfn("Skipping: %s (%s)", path_s, excuse);
+			io::eprintfn("Skipping: %s (%s)", path_s, exc);
 			g_ctx.results.skipped.add(1);
 		}
 		else

@@ -95,9 +95,9 @@ fn void format_worker(any[] args)
 	String path = *(String*)args[0].ptr;
 	Config config = *(Config*)args[1].ptr;
 	Context* ctx = *(Context**)args[2].ptr;
-	if (catch excuse = format_file(path, config, ctx))
+	if (catch exc = format_file(path, config, ctx))
 	{
-		io::eprintfn("Error: could not format file %s: %s.", path, excuse);
+		io::eprintfn("Error: could not format file %s: %s.", path, exc);
 	}
 }
 
@@ -219,9 +219,9 @@ fn int main(String[] args)
 		String? formatted = c3fmt::format_string(mem, read.str_view(), config);
 		defer formatted.free(mem)!!;
 
-		if (catch excuse = formatted)
+		if (catch exc = formatted)
 		{
-			io::eprintfn("Error: could not format source code: %s.", excuse);
+			io::eprintfn("Error: could not format source code: %s.", exc);
 			return 1;
 		}
 
@@ -351,28 +351,28 @@ fn void? format_file(String path, Config config, Context* ctx)
 
 	Mutex.@in_lock(&ctx.print_mu)
 	{
-		if (catch excuse = content)
+		if (catch exc = content)
 		{
-			io::eprintfn("Error: could not read file %s: %s", path, excuse);
-			return excuse~;
+			io::eprintfn("Error: could not read file %s: %s", path, exc);
+			return exc~;
 		}
 
 		String? formatted = c3fmt::format_string(mem, content, config);
 		defer (void)formatted.free(mem);
 
-		if (catch excuse = formatted)
+		if (catch exc = formatted)
 		{
-			io::eprintfn("Error: could not format file %s: %s.", path, excuse);
-			return excuse~;
+			io::eprintfn("Error: could not format file %s: %s.", path, exc);
+			return exc~;
 		}
 
 		switch
 		{
 			case cli_options.in_place:
-				if (catch excuse = file::save(path, formatted))
+				if (catch exc = file::save(path, formatted))
 				{
-					io::eprintfn("Error: could not write to file %s: %s", path, excuse);
-					return excuse~;
+					io::eprintfn("Error: could not write to file %s: %s", path, exc);
+					return exc~;
 				}
 			case cli_options.stdout:
 				io::printfn("%s", formatted);

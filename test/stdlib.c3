@@ -58,9 +58,9 @@ fn void stdlib_worker_task(any[] args)
             String? formatted = c3fmt::format_string(tmem, input, check_semantic: true);
             Path target_path = convert_path(path, g_ctx.cwd_s, tmem)!!;
 
-            if (catch excuse = formatted)
+            if (catch exc = formatted)
             {
-                io::eprintfn("Skipping formatting: %s (%s) - copying original", path_s, excuse);
+                io::eprintfn("Skipping formatting: %s (%s) - copying original", path_s, exc);
                 (void)path::mkdir(target_path.parent()!!, true);
                 (void)file::save(target_path, input);
                 g_ctx.results.skipped.add(1);
