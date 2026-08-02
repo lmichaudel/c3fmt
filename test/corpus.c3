@@ -146,3 +146,7 @@ fn void disable() @test {
 fn void ternary_nested() @test {
     test("ternary_nested", "test/corpus/ternary_nested.c3", "test/corpus/ternary_nested_f.c3");
 }
+
+fn void trailing_comma() @test {
+    test("trailing_comma", "test/corpus/trailing_comma.c3", "test/corpus/trailing_comma_f.c3");
+}

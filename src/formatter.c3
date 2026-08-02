@@ -1665,7 +1665,8 @@ fn void C3Fmt.process_node(
 				skip_space_if_after: { "." },
 			);
 		case "func_param_list":
-			usz id = self.begin_wrap_group(2);
+			bool force_wrap = node.ends_with_trailing_comma(")");
+			usz id = self.begin_wrap_group(2, force_wrap);
 			self.process_composite(
 				node,
 				skip_space_type: { ")", "," },
@@ -1731,7 +1732,8 @@ fn void C3Fmt.process_node(
 		case "macro_param_list":
 			if (node.has_child_of_type("param"))
 			{
-				usz id = self.begin_wrap_group(2);
+				bool force_wrap = node.ends_with_trailing_comma(")");
+				usz id = self.begin_wrap_group(2, force_wrap);
 				self.process_composite(
 					node,
 					skip_space_type: { ")", ",", ";" },
@@ -2080,7 +2082,8 @@ fn void C3Fmt.process_node(
 		case "call_arg_list":
 			if (node.has_child_of_type("call_arg"))
 			{
-				usz id = self.begin_wrap_group(2);
+				bool force_wrap = node.ends_with_trailing_comma(")");
+				usz id = self.begin_wrap_group(2, force_wrap);
 				self.process_composite(
 					node,
 					skip_space_type: { ")", "," },
