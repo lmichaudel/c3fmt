@@ -55,7 +55,7 @@ You can look at [.c3fmt](.c3fmt) for the default configuration.
 | `indent_width` | The number of spaces to use for indentation (if `use_tabs` is false). | `4` |
 | `max_blank_line_between_statements` | Maximum number of blank lines to preserve between statements. | `2` |
 | `max_line_length` | Maximum line length before wrapping. | `120` |
-| `brace_style` | The brace style to use: `ALLMAN` or `K&R`. | `ALLMAN` |
+| `brace_style` | The brace style to use: `ALLMAN` or `K&R` or `C_K&R`(Classic K&R). | `ALLMAN` |
 | `else_on_newline` | Whether to put `else` on a new line. | `true` |
 | `newline_at_eof` | Ensure formatted output ends with a newline. | `false` |
 | `spaces_before_trailing_comment` | The number of space inserted before trailing comments | `1` |
