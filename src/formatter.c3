@@ -2517,7 +2517,11 @@ fn void C3Fmt.process_node(
 					curr,
 					skip_child_type: { "else_part" }
 				);
-				if (self.config.else_on_newline || self.config.brace_style == ALLMAN)
+				if (!self.config.else_on_newline || self.config.brace_style == K_AND_R)
+				{
+					self.buf.space();
+				}
+				else if (self.config.else_on_newline)
 				{
 					self.buf.newline();
 				}
