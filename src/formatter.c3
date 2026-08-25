@@ -6,7 +6,7 @@ import tree_sitter_c3;
 import c3fmt::printer;
 import c3fmt::token;
 import std::collections::list;
-
+// c3fmt off
 alias StringList = list::List {String};
 
 struct C3Fmt
@@ -389,7 +389,7 @@ fn bool C3Fmt.reattach_comment(&self, TSNode child, int blank_line_amount, bool 
 
 fn void C3Fmt.open_brace(&self, bool force_newline = false)
 {
-	if (self.config.brace_style == K_AND_R && !force_newline)
+	if ((self.config.brace_style == K_AND_R || self.config.brace_style == C_KR) && !force_newline)
 	{
 		if (self.buf.gobble_last_newline())
 		{
@@ -1865,7 +1865,12 @@ fn void C3Fmt.process_node(
 			switch (child.type())
 			{
 				case "compound_stmt":
-					self.open_brace();
+					bool need_newline;
+					TSNode parent = ts::node_parent(node);
+					if (!ts::node_is_null(parent) && ts::node_type(parent) == "func_definition" && self.config.brace_style == C_KR) {
+						need_newline = true;
+					}
+					self.open_brace(force_newline: need_newline || inside_compound);
 					self.process_compound(child);
 					self.close_brace();
 				case "implies_body":
@@ -2512,7 +2517,7 @@ fn void C3Fmt.process_node(
 					curr,
 					skip_child_type: { "else_part" }
 				);
-				if (self.config.else_on_newline && self.config.brace_style != K_AND_R)
+				if (self.config.else_on_newline || self.config.brace_style == ALLMAN)
 				{
 					self.buf.newline();
 				}
@@ -2746,3 +2751,4 @@ fn void C3Fmt.process_node(
 			// unreachable();
 	}
 }
+

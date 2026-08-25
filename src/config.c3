@@ -1,9 +1,11 @@
 module c3fmt;
 
+// c3fmt off
 enum BraceStyle
 {
 	ALLMAN,
-	K_AND_R
+	K_AND_R,
+	C_KR            // Classic K&R
 }
 
 struct Config
@@ -116,6 +118,9 @@ fn Config? parse_from_file(String file_path) => @pool()
 					conf.brace_style = K_AND_R;
 					conf.else_on_newline = false;
 				}
+				else if (val == "C_K&R" || val =="LINUX") {
+					conf.brace_style = C_KR;
+				}
 				else
 				{
 					return INVALID_CONFIG~;
@@ -140,3 +145,4 @@ fn Config? parse_from_file(String file_path) => @pool()
 
 	return conf;
 }
+
