@@ -5,7 +5,7 @@ import std::io, std::collections::object;
 // Pass ini::GLOBAL as the section argument to get/set for those keys.
 const String GLOBAL = "";
 
-faultdef INVALID_SECTION, INVALID_KEY, DUPLICATE_KEY;
+excuse { INVALID_SECTION, INVALID_KEY, DUPLICATE_KEY }
 
 enum DuplicateKeyBehavior
 {
@@ -55,8 +55,9 @@ fn Object*? load(Allocator allocator, InStream stream, char delimiter = '=', boo
 
 	// Split on "\n"; trim() on each line also strips \r for Windows \r\n files.
 	int current_line;
-	while (String line @noinit, !@try_catch(line, io::treadline(stream), io::EOF)!)
+	while (String? line = io::treadline(stream), @catch(line) != io::EOF)
 	{
+		if (catch e = line) return e~;
 		if (error_line) *error_line = ++current_line;
 		String s = line.trim();
 		if (!s.len) continue;

@@ -2,15 +2,16 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-faultdef
+excuse
+{
 	EMPTY,
 	INVALID_SCHEME,
 	INVALID_USER,
 	INVALID_PASSWORD,
 	INVALID_HOST,
 	INVALID_PATH,
-	INVALID_FRAGMENT;
-
+	INVALID_FRAGMENT
+}
 <*
  Represents the actual (decoded) Url.
 
@@ -95,12 +96,10 @@ fn Url? parse(Allocator allocator, String url_string)
 		if (try user_info_end = authority.index_of_char('@'))
 		{
 			String userinfo = authority[:user_info_end];
-			String username @noinit;
-			String password;
 			@pool()
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
-				username = userpass[0];
+				String username = userpass[0];
 				url.username = decode(allocator, username, HOST) ?? INVALID_USER~!;
 				if (userpass.len > 1) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD~!;
 			};

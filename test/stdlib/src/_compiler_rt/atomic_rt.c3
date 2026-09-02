@@ -3,7 +3,7 @@ module compiler_rt;
 <*
  All possible atomic orderings
 *>
-constdef AtomicOrderingRT : inline CInt
+constset AtomicOrderingRT : inline CInt
 {
 	NOT_ATOMIC,         // Not atomic
 	UNORDERED,          // No lock
@@ -16,7 +16,7 @@ constdef AtomicOrderingRT : inline CInt
 
 // --- Runtime functions ---
 
-fn bool __atomic_is_lock_free(sz size, void* ptr) @weak @nostrip @cname("__atomic_is_lock_free")
+fn bool __atomic_is_lock_free(sz size, void*) @weak @nostrip @cname("__atomic_is_lock_free")
 {
 	switch (size)
 	{

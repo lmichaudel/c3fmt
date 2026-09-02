@@ -9,7 +9,7 @@ typedef PathCommon = inline String;
 typedef PathWin = inline PathCommon;
 typedef PathPosix = inline PathCommon;
 
-constdef PathSeparator : inline char
+constset PathSeparator : inline char
 {
 	WIN32 = '\\',
 	POSIX = '/'
@@ -18,7 +18,7 @@ const PathSeparator PREFERRED_SEPARATOR = env::WIN32 ? WIN32 : POSIX;
 
 alias PathList = List { Path };
 
-faultdef INVALID_PATH, NO_PARENT;
+excuse { INVALID_PATH, NO_PARENT }
 
 fn Path? cwd(Allocator allocator)
 {
@@ -36,6 +36,7 @@ enum PathEnv : (PathSeparator separator)
 
 fn bool is_dir(Path path) => os::native_is_dir(path);
 fn bool is_file(Path path) => os::native_is_file(path);
+fn bool is_link(Path path) => os::native_is_link(path);
 fn long? file_size(Path path) => os::native_file_size(path);
 fn bool exists(Path path) => os::native_file_or_dir_exists(path);
 fn Path? tcwd() => cwd(tmem) @inline;

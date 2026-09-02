@@ -13,7 +13,7 @@ interface Printable
 	fn sz? to_format(Formatter* formatter) @optional;
 }
 
-faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+excuse { BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT }
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -42,19 +42,13 @@ macro sz? struct_to_format(value, Formatter* f, bool $force_dump)
 		$if $member.name != "":
 			total += f.printf("%s: ", $member.name)!;
 		$endif
-		$if ($force_dump &&& ($member.kind == STRUCT || $member.kind == BITSTRUCT)) |||
-			is_struct_with_default_print($member.type):
+		$if ($force_dump &&& ($member.type.kind == STRUCT || $member.type.kind == BITSTRUCT)) ||| is_struct_with_default_print($member.type):
 			total += struct_to_format(value.$member, f, $force_dump)!;
 		$else
 			total += f.printf("%s", value.$member)!;
 		$endif
 	$endforeach
 	return total + f.print(" }");
-}
-
-fn sz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
-{
-	return f.printf("[Parameter '%s']", self.name);
 }
 
 fn sz? Formatter.printf(&self, String format, args...)

@@ -46,15 +46,15 @@ macro test($name, $input_path, $solution_path, Config config = c3fmt::default_co
     {
         if (solution[i] != formatted[i])
         {
-            sz sol_end = i;
-            while (sol_end < solution.len && solution[sol_end] != '\n') sol_end++;
-            String sol_line = solution[line_start..sol_end];
+			sz sol_end = i;
+			while (sol_end < solution.len && solution[sol_end] != '\n') sol_end++;
+			String sol_line = solution[line_start : sol_end - line_start];
 
-            sz fmt_start = i;
-            while (fmt_start > 0 && formatted[fmt_start - 1] != '\n') fmt_start--;
-            sz fmt_end = i;
-            while (fmt_end < formatted.len && formatted[fmt_end] != '\n') fmt_end++;
-            String fmt_line = formatted[fmt_start..fmt_end];
+			sz fmt_start = i;
+			while (fmt_start > 0 && formatted[fmt_start - 1] != '\n') fmt_start--;
+			sz fmt_end = i;
+			while (fmt_end < formatted.len && formatted[fmt_end] != '\n') fmt_end++;
+			String fmt_line = formatted[fmt_start : fmt_end - fmt_start];
 
             sz col = i - line_start;
 

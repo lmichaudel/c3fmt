@@ -12,12 +12,14 @@ enum SeekOrigin
 }
 
 
-faultdef
+excuse
+{
 	ALREADY_EXISTS,
 	BUSY,
 	CANNOT_READ_DIR,
 	DIR_NOT_EMPTY,
 	PARENT_DIR_MISSING,
+	CLOSED,
 	EOF,
 	FILE_CANNOT_DELETE,
 	FILE_IS_DIR,
@@ -43,8 +45,8 @@ faultdef
 	UNEXPECTED_EOF,
 	UNKNOWN_ERROR,
 	UNSUPPORTED_OPERATION,
-	WOULD_BLOCK;
-
+	WOULD_BLOCK
+}
 
 <*
  Read from a stream (default is stdin) to the next "\n"

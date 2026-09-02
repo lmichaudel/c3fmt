@@ -10,14 +10,14 @@ enum UnicodeBom
 	UTF32_LE,
 	UTF32_BE
 }
-const uint UTF16_SURROGATE_OFFSET @private = 0x10000;
-const uint UTF16_SURROGATE_GENERIC_MASK @private = 0xF800;
-const uint UTF16_SURROGATE_GENERIC_VALUE @private = 0xD800;
-const uint UTF16_SURROGATE_MASK @private = 0xFC00;
-const uint UTF16_SURROGATE_CODEPOINT_MASK @private = 0x03FF;
-const uint UTF16_SURROGATE_BITS @private = 10;
-const uint UTF16_SURROGATE_LOW_VALUE @private = 0xDC00;
-const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
+const uint UTF16_SURROGATE_OFFSET = 0x10000;
+const uint UTF16_SURROGATE_GENERIC_MASK = 0xF800;
+const uint UTF16_SURROGATE_GENERIC_VALUE = 0xD800;
+const uint UTF16_SURROGATE_MASK = 0xFC00;
+const uint UTF16_SURROGATE_CODEPOINT_MASK = 0x03FF;
+const uint UTF16_SURROGATE_BITS = 10;
+const uint UTF16_SURROGATE_LOW_VALUE = 0xDC00;
+const uint UTF16_SURROGATE_HIGH_VALUE = 0xD800;
 
 fn UnicodeBom detect_bom(char[] input)
 {
@@ -528,7 +528,6 @@ fn void? utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 *>
 macro void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer, $unaligned, $byteswap)
 {
-	char* start = utf8_buffer;
 	foreach (&ucref : utf32)
 	{
 		Char32 uc = $unaligned ??? mem::load(ucref, $align: 1) : *ucref;

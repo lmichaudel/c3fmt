@@ -55,3 +55,11 @@ alias name = type;
  @require $assignable(resource.open(), void*)
 *>
 faultdef FAULT;
+
+<*
+ @return ? NOT_FOUND
+ @require [a] a> 0 : "a must be greater than zero"
+ @require foo > 0, foo < 1000 :"optional error msg"
+ @ensure return >foo.x
+*>
+faultdef FAULT;

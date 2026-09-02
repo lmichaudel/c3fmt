@@ -2668,9 +2668,15 @@ fn void C3Fmt.process_node(
 		case "doc_comment_contract":
 			self.process_composite(
 				node,
-				skip_space_type: { "(", ")", "," },
+				skip_space_type: { "(", ")", ",", "?" },
 				skip_space_if_after: { "(" },
 				append_newline: true
+			);
+		case "doc_comment_require_parameter":
+			self.process_composite(
+				node,
+				skip_space_type: { "]" },
+				skip_space_if_after: { "[" }
 			);
 
 		/* ======================================== */

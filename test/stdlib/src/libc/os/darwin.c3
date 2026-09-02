@@ -42,6 +42,7 @@ struct Stat
 }
 
 extern fn int stat(ZString str, Stat* stat) @cname("stat64");
+extern fn int lstat(ZString str, Stat* stat) @cname("lstat64");
 
 extern fn CInt sysctl(CInt *name, CUInt namelen, void *oldp, usz *oldlenp, void *newp, usz newlen);
 
@@ -126,7 +127,7 @@ bitstruct Tc_lflags : CULong
 	bool noflsh : 31;
 }
 
-constdef T_nldly : char
+constset T_nldly : char
 {
 	NL0 = 0b00,
 	NL1 = 0b01,
@@ -134,7 +135,7 @@ constdef T_nldly : char
 	NL3 = 0b11,
 }
 
-constdef T_crdly : char
+constset T_crdly : char
 {
 	CR0 = 0b00,
 	CR1 = 0b01,
@@ -142,7 +143,7 @@ constdef T_crdly : char
 	CR3 = 0b11,
 }
 
-constdef T_tabdly : char
+constset T_tabdly : char
 {
 	// Darwin's TAB3 is the OXTABS bit, exposed as Tc_oflags.oxtabs.
 	TAB0 = 0b00,
@@ -150,25 +151,25 @@ constdef T_tabdly : char
 	TAB2 = 0b10,
 }
 
-constdef T_bsdly : char
+constset T_bsdly : char
 {
 	BS0 = 0b0,
 	BS1 = 0b1,
 }
 
-constdef T_ffdly : char
+constset T_ffdly : char
 {
 	FF0 = 0b0,
 	FF1 = 0b1,
 }
 
-constdef T_vtdly : char
+constset T_vtdly : char
 {
 	VT0 = 0b0,
 	VT1 = 0b1,
 }
 
-constdef T_csize : char
+constset T_csize : char
 {
 	CS5 = 0b00,
 	CS6 = 0b01,
@@ -176,7 +177,7 @@ constdef T_csize : char
 	CS8 = 0b11,
 }
 
-constdef Speed : CULong
+constset Speed : CULong
 {
 	B0      = 0,
 	B50     = 50,
@@ -205,7 +206,7 @@ constdef Speed : CULong
 	EXTB    = B38400,
 }
 
-constdef Control_Char : inline CInt
+constset Control_Char : inline CInt
 {
 	VEOF     = 0,
 	VEOL     = 1,
@@ -227,7 +228,7 @@ constdef Control_Char : inline CInt
 	VSTATUS  = 18,
 }
 
-constdef Tcactions : CInt
+constset Tcactions : CInt
 {
 	TCSANOW   = 0,
 	TCSADRAIN = 1,
