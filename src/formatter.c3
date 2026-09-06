@@ -1059,8 +1059,21 @@ fn void C3Fmt.process_sequence(
 
 		if (child.is_comment())
 		{
-			assert (child.type() == "block_comment");
-			self.process_block_comment(child);
+			if (child.type() == "block_comment")
+			{
+				self.process_block_comment(child);
+			}
+			else if (child.type() == "line_comment")
+			{
+				String comment_str = self.extract_comment_string(child);
+				self.check_directive(comment_str, child);
+				self.buf.inline_comment(comment_str);
+				self.check_directive_after(comment_str, child);
+			}
+			else if (child.type() == "doc_comment")
+			{
+				unreachable();
+			}
 		}
 		else
 		{
