@@ -1604,10 +1604,23 @@ fn void C3Fmt.process_doc_comment_text(&self, TSNode node)
 
     for (sz i = start; i <= end; ++i)
     {
-        String line = lines[i].trim();
+        String raw_line = lines[i];
+        String line = raw_line.trim();
 
         if (line == "")
         {
+            self.buf.newline();
+            first_emitted_line = false;
+            continue;
+        }
+
+        // Preserve existing indentation (comonly code blocks)
+        usz indent_chars = 0;
+        for (usz j = 0; j < raw_line.len && (raw_line[j] == ' ' || raw_line[j] == '\t'); j++) indent_chars++;
+        if (indent_chars > 1)
+        {
+            if (!first_emitted_line) self.buf.space();
+            self.buf.text(raw_line[1..].trim_right());
             self.buf.newline();
             first_emitted_line = false;
             continue;
