@@ -269,3 +269,8 @@ fn void compound_statements() @test
 {
 	test("compound_statements", "test/corpus/compound_statements.c3", "test/corpus/compound_statements_f.c3");
 }
+
+fn void align_wrap_cycle() @test
+{
+	test("align_wrap_cycle", "test/corpus/align_wrap_cycle.c3", "test/corpus/align_wrap_cycle_f.c3");
+}
