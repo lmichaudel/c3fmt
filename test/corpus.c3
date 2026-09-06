@@ -220,3 +220,11 @@ fn void ternary_nested() @test {
 fn void trailing_comma() @test {
     test("trailing_comma", "test/corpus/trailing_comma.c3", "test/corpus/trailing_comma_f.c3");
 }
+
+fn void align_wrap_cycle() @test {
+    test(
+        "align_wrap_cycle",
+        "test/corpus/align_wrap_cycle.c3",
+        "test/corpus/align_wrap_cycle_f.c3"
+    );
+}

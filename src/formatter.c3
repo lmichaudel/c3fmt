@@ -471,6 +471,15 @@ fn TSNode declaration_target(TSNode node)
 	return (TSNode){};
 }
 
+fn TSNode unwrap_rethrow(TSNode node)
+{
+	while (!ts::node_is_null(node) && node.type() == "rethrow_expr")
+	{
+		node = ts::node_named_child(node, 0);
+	}
+	return node;
+}
+
 fn void C3Fmt.process_declaration_prefix(&self, TSNode node, TSNode target)
 {
 	if (!is_declaration_wrapper(node)) return;
@@ -606,6 +615,8 @@ fn void C3Fmt.process_aligned_block(&self, TSNode parent, uint start_index, uint
 			TSNode right = (target.type() == "macro_declaration" || !target.has_child_with_field("right"))
 				? (TSNode){}
 				: target.get_child_with_field("right");
+			right = unwrap_rethrow(right);
+
 			if (ts::node_is_null(right) || right.type() != "call_expr") continue;
 
 			self.process_assignment_left(target, op);
