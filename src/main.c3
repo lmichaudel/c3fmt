@@ -369,6 +369,7 @@ fn void? format_file(String path, Config config, Context* ctx)
 		switch
 		{
 			case cli_options.in_place:
+				if (content == formatted) return;
 				if (catch exc = file::save(path, formatted))
 				{
 					io::eprintfn("Error: could not write to file %s: %s", path, exc);
