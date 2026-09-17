@@ -27,6 +27,9 @@ jobs:
           - os: windows-latest
             artifact-name: c3fmt-windows
             artifact-path: build/c3fmt.exe
+          - os: windows-11-arm
+            artifact-name: c3fmt-windows-aarch64
+            artifact-path: build/c3fmt.exe
 
     runs-on: ${{ matrix.os }}
     defaults:
@@ -93,9 +96,10 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir dist
-          mv staging/c3fmt-linux/c3fmt        dist/c3fmt-linux
-          mv staging/c3fmt-macos/c3fmt        dist/c3fmt-macos
-          mv staging/c3fmt-windows/c3fmt.exe  dist/c3fmt-windows.exe
+          mv staging/c3fmt-linux/c3fmt                dist/c3fmt-linux
+          mv staging/c3fmt-macos/c3fmt                dist/c3fmt-macos
+          mv staging/c3fmt-windows/c3fmt.exe          dist/c3fmt-windows.exe
+          mv staging/c3fmt-windows-aarch64/c3fmt.exe  dist/c3fmt-windows-aarch64.exe
 
       - name: Release
         uses: ncipollo/release-action@v1

@@ -57,10 +57,10 @@ perl -pi -e 's|\Q../../../src\E|src|g' "$STAGING/c3l/tree_sitter_c3.c3i"
 
 # Move -fPIC to specific non-windows targets to avoid MSVC warnings
 perl -pi -e 's|"cflags" : "-O2 -fPIC"|"cflags" : "-O2"|g' "$STAGING/c3l/manifest.json"
-perl -pi -e 's|("targets" : \{)|$1\n    "linux-x64" : { "cflags": "-fPIC" },\n    "linux-x86" : { "cflags": "-fPIC" },\n    "macos-x64" : { "cflags": "-fPIC" },\n    "macos-aarch64" : { "cflags": "-fPIC" },|' "$STAGING/c3l/manifest.json"
+perl -0pi -e 's/("(?:linux-x64|linux-x86|macos-x64|macos-aarch64)"\s*:\s*)\{\s*\}/${1}{ "cflags": "-fPIC" }/g' "$STAGING/c3l/manifest.json"
 
 # Ensure Windows targets are available in the manifest (NOTE: fix this upstream)
-for target in "windows-x64"; do
+for target in "windows-x64" "windows-aarch64"; do
     if ! grep -q "$target" "$STAGING/c3l/manifest.json"; then
         perl -pi -e 's|("targets" : \{)|$1\n    "'"$target"'" : { },|g' "$STAGING/c3l/manifest.json"
     fi
