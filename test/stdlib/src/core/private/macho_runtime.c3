@@ -1,7 +1,7 @@
 module std::core::machoruntime @feat(DARWIN) @private;
 
-extern Callback c3_dtor_start @asmname("section$start$__DATA$__c3dtor");
-extern Callback c3_dtor_end   @asmname("section$end$__DATA$__c3dtor");
+extern Callback c3_dtor_start; // @asmname("section$start$__DATA$__c3dtor");
+extern Callback c3_dtor_end; //  @asmname("section$end$__DATA$__c3dtor");
 
 Callback sentinel_ctor @section("__DATA,__c3ctor") @nostrip;
 Callback sentinel_dtor @section("__DATA,__c3dtor") @nostrip;
