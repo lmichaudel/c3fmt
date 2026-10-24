@@ -12,6 +12,7 @@
   "output": "build",
   "exec-dir": "scripts",
   "script-dir": "scripts",
+  "wincrt": "static",
   "targets": {
     "c3fmt": {
       "name": "c3fmt",

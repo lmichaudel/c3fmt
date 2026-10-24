@@ -39,9 +39,30 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: ManuLinares/setup-c3@v1
+      # - uses: ManuLinares/setup-c3@v1
+      #   with:
+      #     version: nightly
+
+      - name: Setup MSVC developer environment
+        if: runner.os == 'Windows'
+        uses: TheMrMilchmann/setup-msvc-dev@v4
         with:
-          version: nightly
+          arch: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+
+      - name: Build c3c with debug symbols
+        run: |
+          git clone --filter=blob:none https://github.com/c3lang/c3c.git _c3c_src
+          cd _c3c_src
+          # git checkout b8bcba0b22e88b55495016ce59d405e5d76f950a
+
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+          cmake --build build -j
+          C3_OUT="$PWD/build"
+
+          mkdir -p ../c3/lib
+          cp -r lib/std ../c3/lib/
+          echo "$C3_OUT" >> "$GITHUB_PATH"
+          "$C3_OUT/c3c" --version
 
       - name: Build tree-sitter static library
         run: |
@@ -51,12 +72,7 @@ jobs:
           bash scripts/build_tree_sitter_static.sh
 
       - name: Run tests
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            c3c test -vv --test-show-output --wincrt=static
-          else
-            c3c test -vv --test-show-output
-          fi
+        run: c3c test -vv --test-show-output
 
       - name: Compile formatted standard library
         working-directory: test/stdlib
@@ -72,8 +88,6 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             c3c build c3fmt-static -vv
-          elif [[ "$RUNNER_OS" == "Windows" ]]; then
-            c3c build c3fmt -vv -O3 -g0 --wincrt=static
           else
             c3c build c3fmt -vv -O3 -g0
           fi
