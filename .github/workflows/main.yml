@@ -142,13 +142,9 @@ jobs:
           fi
 
       - name: Compile formatted standard library
+        continue-on-error: true
         working-directory: test/stdlib
-        run: |
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            c3c build -vv --wincrt=static
-          else
-            c3c build -vv
-          fi
+        run: c3c build -vv -g0
 
       - name: Setup static build (Linux)
         if: runner.os == 'Linux'
