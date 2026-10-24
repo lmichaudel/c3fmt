@@ -43,78 +43,30 @@ jobs:
       #   with:
       #     version: nightly
 
-      - name: Download c3c artifact for commit
-        env:
-          GH_TOKEN: ${{ github.token }}
-          # --- Next batch: commits 19 to 54 (uncomment one): ---
-          # TARGET_COMMIT: "76016afd108712a60be264beea6c6b7b3fc1e199"
-          # TARGET_COMMIT: "4982a6ae70dbd8c6adf5f87af5303f4c4460398a"
-          # TARGET_COMMIT: "eafe571855a84ed8295843f0ecb279add137ed0b"
-          # TARGET_COMMIT: "131034db3e2edbaa4f3a7e6c583b21a9486e7d5a"
-          # TARGET_COMMIT: "ad01cbb98682ab41fba52e20b64ab3801543c7d9"
-          # TARGET_COMMIT: "176a443f0a772fce00c719e846a58f004e7bc27a"
-          # TARGET_COMMIT: "262e0490919f29a69738db48a1da0e78761cbb51"
-          # TARGET_COMMIT: "9e4e245a83a219ee50f80907ed97f347e8970012"
-          # TARGET_COMMIT: "cd0f3981952c53e85a36061307fd8e3ca32602e4"
-          # TARGET_COMMIT: "3c9de9e06b543e742cba34c9d3a026c8da9497b9"
-          # TARGET_COMMIT: "3d125db8001bd6ba94df3837320fcd96f6e06702"
-          # TARGET_COMMIT: "feb0f5548be72fdd63c2a6333e637579aa6c8b25"
-          #TARGET_COMMIT: "fa6d8f0e79aef34298ec5318a225721643524a20" #nope
-          # TARGET_COMMIT: "de62df26fa5ab4ce0d41ea41f6a128ac8df5325a"
-          # TARGET_COMMIT: "3738e3d51f49de3f4f7fb67de9a4463fcb6c35aa"
-          #TARGET_COMMIT: "f499a28e72d49b68cf52de4b3c9a149619d0f029"
-          # TARGET_COMMIT: "524ec8bb2ce12282d1b567687d412bb2779979e8"
-          #TARGET_COMMIT: "099f1a105758c7729b2263edee59ce5b0c3d75e7"   #### this test works, build fails (because it doesn't have --wincrt=static probably)
-          # TARGET_COMMIT: "90482664a879e825c2e0cfdaf7da3b42c1619940"
-          # TARGET_COMMIT: "bd3d7dc2d981ebb3c7005929bbf69d73e3d0e34f"
-          # TARGET_COMMIT: "1dd2fe49bf081eada55bcd660965f059408032ba"
-          # TARGET_COMMIT: "8fd440be562660ca8ddf61006d6f9e68b54603dd"
-          # TARGET_COMMIT: "7579b88560d916a63115da81565def64b15fc3eb"     #### this one works, the `c3c build` of the stdlib fails
-          #TARGET_COMMIT: "042e634879c650fb2790b33ed955753e96fbd169"    #### this one works, the `c3c build` of the stdlib fails
-          # TARGET_COMMIT: "895f5df98afae8c2f790e1a8f4b7853a5598364a"
-          # TARGET_COMMIT: "d1b1e4451716a34e9c5eb46b78999ff92e71c3a1" # v0.8.5_1 #### this one works, the `c3c build` of the stdlib fails
-          # TARGET_COMMIT: "0a4e87be0fc851cb23c2d0a121b3d76907d4be23"
-          # TARGET_COMMIT: "77cc11ba4e2d89c063a2d087ef493c83e0fd4978"
-          #TARGET_COMMIT: "640091d3303a393f9651d644063b837fc19d05f1"    # Segmentation fault         c3c build -vv
-          TARGET_COMMIT: "b8bcba0b22e88b55495016ce59d405e5d76f950a"
-          #TARGET_COMMIT: "9bf299b369f86f0b50c1a8b3382a17e2f0f803d9" no CI artifact, 
-          # TARGET_COMMIT: "38e3b475624912b8deaa4ba847807115343dfe07"
-          # TARGET_COMMIT: "3477d758c883aa671ff89c27d32691a22bf20144"
-          # TARGET_COMMIT: "dc2da14e31de61440fa558bbf2c2c62c5f9e3034"
-          # TARGET_COMMIT: "594d69da54a37d55788510e1cf8f3a2e9ea2ad1b"
-          # TARGET_COMMIT: "1fc5ec07fa98dc9fd1cc41bdf91ac2adbf6976f4" # v0.8.5
+      - name: Build c3c with debug symbols
         run: |
-          RUN_ID=$(gh run list -R c3lang/c3c --commit "$TARGET_COMMIT" --json databaseId -q '.[0].databaseId')
-          if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
-            echo "::error::No CI run found for commit $TARGET_COMMIT"
-            exit 1
-          fi
+          git clone --filter=blob:none https://github.com/c3lang/c3c.git _c3c_src
+          cd _c3c_src
+          git checkout b8bcba0b22e88b55495016ce59d405e5d76f950a
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             if [[ "$RUNNER_ARCH" == "ARM64" ]]; then
-              ARTIFACT="c3-windows-aarch64-Release"
+              cmake -B build -A ARM64 -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
             else
-              ARTIFACT="c3-windows-Release"
+              cmake -B build -A x64 -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
             fi
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            ARTIFACT="c3-macos-Release"
+            cmake --build build --config Debug -j
+            C3_OUT="$PWD/build/Debug"
           else
-            ARTIFACT="c3-linux-static-Release"
+            cmake -B build -DCMAKE_BUILD_TYPE=Debug -DC3_FETCH_LLVM=ON
+            cmake --build build -j
+            C3_OUT="$PWD/build"
           fi
 
-          mkdir -p c3_bin
-          gh run download "$RUN_ID" -R c3lang/c3c -n "$ARTIFACT" -D c3_bin
-
-          if compgen -G "c3_bin/*.zip" > /dev/null; then
-            unzip -q -o c3_bin/*.zip -d .
-          fi
-          if compgen -G "c3_bin/*.tar.gz" > /dev/null; then
-            tar -xzf c3_bin/*.tar.gz -C .
-          fi
-
-          chmod +x c3/c3c* 2>/dev/null || true
-          echo "$PWD/c3" >> "$GITHUB_PATH"
-          "$PWD/c3/c3c" --version
+          mkdir -p ../c3/lib
+          cp -r lib/std ../c3/lib/
+          echo "$C3_OUT" >> "$GITHUB_PATH"
+          "$C3_OUT/c3c" --version
 
       - name: Build tree-sitter static library
         run: |
