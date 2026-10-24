@@ -9,6 +9,7 @@
   "test-sources":  [ ],
   "build-dir": "build",
   "output": "build",
+  "wincrt": "static",
   "targets": {
     "stdlib": {
       "type": "static-lib"
