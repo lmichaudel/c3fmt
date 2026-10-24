@@ -99,17 +99,13 @@ jobs:
         continue-on-error: true
         working-directory: test/stdlib
         run: |
-          # Test LLDB if present
-          if command -v lldb > /dev/null; then
-            timeout 60s lldb --batch -o "run" -o "bt all" -o "quit" -- c3c build -vv -g0 < /dev/null || true
-            exit 0
-          fi
-
-          # Test CDB (Windows SDK Console Debugger) with debug heap disabled
-          CDB=$(find "/c/Program Files (x86)/Windows Kits/10/Debuggers" -name cdb.exe 2>/dev/null | grep -i "arm64" | head -1 || true)
-          if [[ -n "$CDB" && -x "$CDB" ]]; then
-            timeout 60s "$CDB" -hd -g -G -sxe av -y "srv*C:\\symbols*https://msdl.microsoft.com/download/symbols" -c "g; .ecxr; k 50; q" c3c build -vv -g0 < /dev/null || true
-            exit 0
+          # Use CDB on Windows with native debug symbols from the build
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            CDB=$(find "/c/Program Files (x86)/Windows Kits/10/Debuggers" -name cdb.exe 2>/dev/null | grep -i "arm64" | head -1 || true)
+            if [[ -n "$CDB" && -x "$CDB" ]]; then
+              timeout 60s "$CDB" -hd -g -G -sxe av -y "$PWD/../../_c3c_src/build" -c "g; .ecxr; k 50; q" c3c build -vv -g0 < /dev/null || true
+              exit 0
+            fi
           fi
 
           # Fallback: Check if GDB exists
