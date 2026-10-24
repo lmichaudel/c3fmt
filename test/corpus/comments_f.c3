@@ -26,6 +26,9 @@ fn void main()
 	}
 
 	mystruct/* i'm a psycho */.field = 10;
+	//int commented_out = 1;
+	//-----------------
+	/*no_space*/
 }
 
 <*

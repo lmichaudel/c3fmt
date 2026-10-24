@@ -119,7 +119,16 @@ fn usz C3Fmt.current_column(&self)
 
 fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 {
-	if (comment.starts_with("c3fmt on") && !self.formatter_enabled)
+	String text = comment.trim();
+	if (text.starts_with("//"))
+	{
+		text = text[2..].trim();
+	}
+	else if (text.starts_with("/*"))
+	{
+		text = text[2 : text.len >= 4 ? text.len - 4 : 0].trim();
+	}
+	if (text.starts_with("c3fmt on") && !self.formatter_enabled)
 	{
 		// must keep indent/dedent tokens
 		TokenBuffer structural_tokens;
@@ -187,7 +196,16 @@ fn void C3Fmt.check_directive(&self, String comment, TSNode node)
 
 fn void C3Fmt.check_directive_after(&self, String comment, TSNode node)
 {
-	if (comment.starts_with("c3fmt off") && self.formatter_enabled)
+	String text = comment.trim();
+	if (text.starts_with("//"))
+	{
+		text = text[2..].trim();
+	}
+	else if (text.starts_with("/*"))
+	{
+		text = text[2 : text.len >= 4 ? text.len - 4 : 0].trim();
+	}
+	if (text.starts_with("c3fmt off") && self.formatter_enabled)
 	{
 		self.formatter_enabled = false;
 		self.disabled_start_byte = node.end_byte();
@@ -938,7 +956,7 @@ fn void C3Fmt.process_composite(
 			}
 			else if (child.type() == "line_comment")
 			{
-				String comment_str = self.extract_comment_string(child);
+				String comment_str = child.get_text(self.source_code).trim_right();
 				self.check_directive(comment_str, child);
 				self.buf.inline_comment(comment_str);
 				self.check_directive_after(comment_str, child);
@@ -1065,7 +1083,7 @@ fn void C3Fmt.process_sequence(
 			}
 			else if (child.type() == "line_comment")
 			{
-				String comment_str = self.extract_comment_string(child);
+				String comment_str = child.get_text(self.source_code).trim_right();
 				self.check_directive(comment_str, child);
 				self.buf.inline_comment(comment_str);
 				self.check_directive_after(comment_str, child);
@@ -1352,10 +1370,11 @@ fn void C3Fmt.process_asm_block_stmt(&self, TSNode node)
 						io::eprintfn("Found an inline comment as last child?");
 						unreachable();
 					}
-					String comment_str = self.extract_comment_string(child);
-					self.check_directive(comment_str, child);
-					self.buf.inline_comment(comment_str);
-					self.check_directive_after(comment_str, child);
+					String raw = child.get_text(self.source_code).trim_right();
+					String directive = raw[2..].trim();
+					self.check_directive(directive, child);
+					self.buf.inline_comment(raw);
+					self.check_directive_after(directive, child);
 				}
 			}
 			else
@@ -1470,16 +1489,11 @@ fn void C3Fmt.process_comment(&self, TSNode node, bool is_trailing = false)
 *>
 fn void C3Fmt.process_block_comment(&self, TSNode node)
 {
-	String comment = self.extract_comment_string(node);
-	self.check_directive(comment, node);
-
-	self.buf.text("/*");
-	if (!comment.starts_with("*")) self.buf.space();
-	self.buf.text(comment);
-	if (!comment.ends_with("*")) self.buf.space();
-	self.buf.text("*/");
-
-	self.check_directive_after(comment, node);
+	String raw = node.get_text(self.source_code).trim_right();
+	String directive = raw[2..raw.len - 2].trim();
+	self.check_directive(directive, node);
+	self.buf.text(raw);
+	self.check_directive_after(directive, node);
 }
 
 <*
@@ -1488,21 +1502,13 @@ fn void C3Fmt.process_block_comment(&self, TSNode node)
 *>
 fn void C3Fmt.process_line_comment(&self, TSNode node, bool is_trailing = false)
 {
-	// Trailing comments (on same line as code): normalize to single space.
-	// Standalone comments (own line): preserve internal indentation after the separator space.
-	String body = is_trailing
-		? self.extract_comment_string(node)
-		: node.get_text(self.source_code)[2..].strip_prefix(" ").trim_right();
-	String comment = body.trim();
-
-	self.check_directive(comment, node);
-
-	self.buf.text(node.get_text(self.source_code)[0:2]);
-	self.buf.space();
-	self.buf.text(body);
-
-	self.check_directive_after(comment, node);
+	String raw = node.get_text(self.source_code).trim_right();
+	String directive = raw[2..].trim();
+	self.check_directive(directive, node);
+	self.buf.text(raw);
+	self.check_directive_after(directive, node);
 }
+
 <*
  Pretty print a doc comment.
  @param node : "The processed node"
@@ -2083,7 +2089,7 @@ fn void C3Fmt.process_node(
 
 				if (child.is_comment())
 				{
-					String comment_str = self.extract_comment_string(child);
+					String comment_str = child.get_text(self.source_code).trim_right();
 					self.check_directive(comment_str, child);
 					self.buf.inline_comment(comment_str);
 					self.check_directive_after(comment_str, child);

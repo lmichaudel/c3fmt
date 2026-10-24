@@ -12,7 +12,7 @@ fn void main()
 					doSomethingElse();
 				case 3:
 					// body
-					nextcase rand(); // Jump to random case
+					nextcase rand(); //  Jump to random case
 				default: // trail
 					io::printn("Ended");
 					nextcase MAIN: BAR; // Jump to outer (MAIN) switch

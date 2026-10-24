@@ -105,7 +105,7 @@ fn usz Token.len(&self)
 		case TEXT:
 			return self.str.len;
 		case INLINE_COMMENT:
-			return self.str.len + 3;
+			return self.str.len;
 		case ALIGN:
 			return 0;
 	}
@@ -442,11 +442,6 @@ fn void C3Fmt.print_line(&self, Token[] tokens, usz indent_level)
 			switch (token.kind)
 			{
 				case INLINE_COMMENT:
-					new_buf.push(token::text("//"));
-					if (token.str != "")
-					{
-						new_buf.push(token::space());
-					}
 					new_buf.push(token::text(token.str));
 					new_buf.push(token::newline());
 					self.print_line(
