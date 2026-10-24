@@ -38,6 +38,7 @@ git clone --quiet --depth=1 "$REPO" "$STAGING/repo"
 echo "Syncing stdlib/src ..."
 mkdir -p "$STDLIB_SRC_DIR"
 rm -rf "$STDLIB_SRC_DIR"/*
+rm -rf "$SCRIPT_DIR/../test/stdlib/src-formatted"
 
 cp -r "$STAGING/repo/lib/std"/* "$STDLIB_SRC_DIR/"
 
