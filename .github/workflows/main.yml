@@ -69,7 +69,7 @@ jobs:
           # TARGET_COMMIT: "bd3d7dc2d981ebb3c7005929bbf69d73e3d0e34f"
           # TARGET_COMMIT: "1dd2fe49bf081eada55bcd660965f059408032ba"
           # TARGET_COMMIT: "8fd440be562660ca8ddf61006d6f9e68b54603dd"
-          TARGET_COMMIT: "7579b88560d916a63115da81565def64b15fc3eb"
+          TARGET_COMMIT: "7579b88560d916a63115da81565def64b15fc3eb"     #### this one works, the `c3c build` of the stdlib fails
           #TARGET_COMMIT: "042e634879c650fb2790b33ed955753e96fbd169"    #### this one works, the `c3c build` of the stdlib fails
           # TARGET_COMMIT: "895f5df98afae8c2f790e1a8f4b7853a5598364a"
           # TARGET_COMMIT: "d1b1e4451716a34e9c5eb46b78999ff92e71c3a1" # v0.8.5_1
@@ -106,15 +106,15 @@ jobs:
           gh run download "$RUN_ID" -R c3lang/c3c -n "$ARTIFACT" -D c3_bin
 
           if compgen -G "c3_bin/*.zip" > /dev/null; then
-            unzip -q -o c3_bin/*.zip -d c3_bin
+            unzip -q -o c3_bin/*.zip -d .
           fi
           if compgen -G "c3_bin/*.tar.gz" > /dev/null; then
-            tar -xzf c3_bin/*.tar.gz -C c3_bin
+            tar -xzf c3_bin/*.tar.gz -C .
           fi
 
-          chmod +x c3_bin/c3/c3c* 2>/dev/null || true
-          echo "$PWD/c3_bin/c3" >> "$GITHUB_PATH"
-          "$PWD/c3_bin/c3/c3c" --version
+          chmod +x c3/c3c* 2>/dev/null || true
+          echo "$PWD/c3" >> "$GITHUB_PATH"
+          "$PWD/c3/c3c" --version
 
       - name: Build tree-sitter static library
         run: |
