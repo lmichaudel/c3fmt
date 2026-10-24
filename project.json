@@ -2,7 +2,7 @@
   "langrev": "1",
   "warnings":  [ "no-unused" ],
   "dependency-search-paths":  [ "lib" ],
-  "linker-search-paths": [ "build/ts-lib/lib" ],
+  "linker-search-paths":  [ "build/ts-lib/lib" ],
   "dependencies":  [ "tree_sitter", "tree_sitter_c3" ],
   "authors":  [ "Lucas Michaudel <lucas.michaudel@gmail.com>" ],
   "version": "0.3.4",
@@ -19,32 +19,37 @@
     },
     "tree-sitter": {
       "type": "prepare",
-      "exec": [ "./build_tree_sitter_static.sh" ]
+      "exec":  [ "./build_tree_sitter_static.sh" ]
     },
     "c3fmt-static": {
       "name": "c3fmt",
       "type": "executable",
       "single-module": false,
-      "linker-search-paths": [ "build/ts-lib/lib" ],
-      "link-args": [
+      "linker-search-paths":  [ "build/ts-lib/lib" ],
+      "link-args":  [ 
         "-static",
         "-s",
         "-nostdlib",
         "-L/usr/lib/musl/lib",
         "/usr/lib/musl/lib/crt1.o",
         "/usr/lib/musl/lib/crti.o",
-        "-ltree-sitter", "-ldl", "-lm", "-lc", "/usr/lib/musl/lib/crtn.o" ],
+        "-ltree-sitter",
+        "-ldl",
+        "-lm",
+        "-lc",
+        "/usr/lib/musl/lib/crtn.o"
+ ],
       "linux-libc": "musl",
       "linker": "cc",
       "debug-info": "none"
     },
     "update-grammar": {
       "type": "prepare",
-      "exec": [ "./update_tree_sitter_c3.sh" ]
+      "exec":  [ "./update_tree_sitter_c3.sh" ]
     },
     "update-stdlib": {
       "type": "prepare",
-      "exec": [ "./update_stdlib.sh" ]
+      "exec":  [ "./update_stdlib.sh" ]
     }
   },
   "cpu": "generic",
