@@ -92,9 +92,9 @@ jobs:
 
           if [[ "$RUNNER_OS" == "Windows" ]]; then
             if [[ "$RUNNER_ARCH" == "ARM64" ]]; then
-              ARTIFACT="c3-windows-aarch64-Debug"
+              ARTIFACT="c3-windows-aarch64-Release"
             else
-              ARTIFACT="c3-windows-Debug"
+              ARTIFACT="c3-windows-Release"
             fi
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             ARTIFACT="c3-macos-Release"
@@ -154,7 +154,7 @@ jobs:
           # Test CDB (Windows SDK Console Debugger) with debug heap disabled
           CDB=$(find "/c/Program Files (x86)/Windows Kits/10/Debuggers" -name cdb.exe 2>/dev/null | grep -i "arm64" | head -1 || true)
           if [[ -n "$CDB" && -x "$CDB" ]]; then
-            timeout 60s "$CDB" -hd -g -G -sxe av -c "g; k 50; q" c3c build -vv -g0 < /dev/null || true
+            timeout 60s "$CDB" -hd -g -G -sxe av -y "srv*C:\\symbols*https://msdl.microsoft.com/download/symbols" -c "g; .ecxr; k 50; q" c3c build -vv -g0 < /dev/null || true
             exit 0
           fi
 
