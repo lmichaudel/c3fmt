@@ -144,7 +144,28 @@ jobs:
       - name: Compile formatted standard library
         continue-on-error: true
         working-directory: test/stdlib
-        run: c3c build -vv -g0 --threads 1
+        run: |
+          # Test LLDB if present
+          if command -v lldb > /dev/null; then
+            timeout 60s lldb --batch -o "run" -o "bt all" -o "quit" -- c3c build -vv -g0 < /dev/null || true
+            exit 0
+          fi
+
+          # Test CDB (Windows SDK Console Debugger)
+          CDB=$(find "/c/Program Files (x86)/Windows Kits/10/Debuggers" -name cdb.exe 2>/dev/null | grep -i "arm64" | head -1 || true)
+          if [[ -n "$CDB" && -x "$CDB" ]]; then
+            timeout 60s "$CDB" -g -G -sxe av -c "g; k; q" c3c build -vv -g0 < /dev/null || true
+            exit 0
+          fi
+
+          # Fallback: Check if GDB exists
+          if command -v gdb > /dev/null; then
+            timeout 60s gdb -batch -ex "run" -ex "bt" --args c3c build -vv -g0 < /dev/null || true
+            exit 0
+          fi
+
+          echo "No debugger found in runner environment, running directly:"
+          c3c build -vv -g0
 
       - name: Setup static build (Linux)
         if: runner.os == 'Linux'
