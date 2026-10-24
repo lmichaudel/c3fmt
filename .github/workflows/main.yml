@@ -41,7 +41,7 @@ jobs:
 
       - uses: ManuLinares/setup-c3@v1
         with:
-          version: nightly
+          version: "0.8.5_1"
 
       - name: Build tree-sitter static library
         run: |
