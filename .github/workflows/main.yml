@@ -39,9 +39,65 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: ManuLinares/setup-c3@v1
-        with:
-          version: nightly
+      # - uses: ManuLinares/setup-c3@v1
+      #   with:
+      #     version: nightly
+
+      - name: Download c3c artifact for commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # --- Top-down commit list (uncomment one): ---
+          #TARGET_COMMIT: "704473e256bb500264794945cd0bd7cc1991348f"
+          TARGET_COMMIT: "20f12b2d4614314a0134c90f7d172f34b9c45523"
+          # TARGET_COMMIT: "5c6855660b768a38e4e214c1fd326ee9afa2cb79"
+          # TARGET_COMMIT: "bad3e34d93718386137d33cdd1bd861d0d2378f2"
+          # TARGET_COMMIT: "c7cfaf3486b03a14bb757a29ffa93778f39f750c"
+          # TARGET_COMMIT: "15a62e990bb7128d0fd90f352ec7c692698044a4"
+          # TARGET_COMMIT: "02f05a4fab87b26f6ec898355a6f5b4fb7781014"
+          # TARGET_COMMIT: "0f5dc285d514b95325b8393750637d0ade923214"
+          # TARGET_COMMIT: "1b75abc3f7df9b6d44ab8d13d473b0bb1dc67a3d"
+          # TARGET_COMMIT: "d8e75f987338a68a8724199b2cc82543e1e32365"
+          # TARGET_COMMIT: "5e06e133a6c44beb671f6bc50cee56428851fbfa"
+          # TARGET_COMMIT: "e04dd92cbbd078f7b1151e592c87c60caec1a926"
+          # TARGET_COMMIT: "7dc4eaf6208e7a55a4a1e8c464c93ffeebf07b15"
+          # TARGET_COMMIT: "07faa418fe6b59aa274fa44db02f6cf14df33d60"
+          # TARGET_COMMIT: "3db251d88c277d4bc2ea547a718ff2e594d520af"
+          # TARGET_COMMIT: "f46de4fd78402e1d8e222c8eb9062f84c8235125"
+          # TARGET_COMMIT: "ff1c15f12258c371d916a21c54f998c904518483"
+          # TARGET_COMMIT: "7a9c047a66c4e6f664aa82c800e61c2b7129295e"
+          # TARGET_COMMIT: "76016afd108712a60be264beea6c6b7b3fc1e199"
+          # TARGET_COMMIT: "4982a6ae70dbd8c6adf5f87af5303f4c4460398a"
+        run: |
+          RUN_ID=$(gh run list -R c3lang/c3c --commit "$TARGET_COMMIT" --json databaseId -q '.[0].databaseId')
+          if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
+            echo "::error::No CI run found for commit $TARGET_COMMIT"
+            exit 1
+          fi
+
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            if [[ "$RUNNER_ARCH" == "ARM64" ]]; then
+              ARTIFACT="c3-windows-aarch64-Release"
+            else
+              ARTIFACT="c3-windows-Release"
+            fi
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            ARTIFACT="c3-macos-Release"
+          else
+            ARTIFACT="c3-linux-static-Release"
+          fi
+
+          mkdir -p c3_bin
+          gh run download "$RUN_ID" -R c3lang/c3c -n "$ARTIFACT" -D c3_bin
+
+          if compgen -G "c3_bin/*.zip" > /dev/null; then
+            unzip -q -o c3_bin/*.zip -d c3_bin
+          fi
+          if compgen -G "c3_bin/*.tar.gz" > /dev/null; then
+            tar -xzf c3_bin/*.tar.gz -C c3_bin
+          fi
+
+          chmod +x c3_bin/c3/c3c* 2>/dev/null || true
+          echo "$PWD/c3_bin/c3" >> "$GITHUB_PATH"
 
       - name: Build tree-sitter static library
         run: |
