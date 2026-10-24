@@ -62,9 +62,9 @@ jobs:
           #TARGET_COMMIT: "fa6d8f0e79aef34298ec5318a225721643524a20" #nope
           # TARGET_COMMIT: "de62df26fa5ab4ce0d41ea41f6a128ac8df5325a"
           # TARGET_COMMIT: "3738e3d51f49de3f4f7fb67de9a4463fcb6c35aa"
-          TARGET_COMMIT: "f499a28e72d49b68cf52de4b3c9a149619d0f029"
+          #TARGET_COMMIT: "f499a28e72d49b68cf52de4b3c9a149619d0f029"
           # TARGET_COMMIT: "524ec8bb2ce12282d1b567687d412bb2779979e8"
-          #TARGET_COMMIT: "099f1a105758c7729b2263edee59ce5b0c3d75e7"   #### this one works
+          TARGET_COMMIT: "099f1a105758c7729b2263edee59ce5b0c3d75e7"   #### this test works, build fails (because it doesn't have --wincrt=static probably)
           # TARGET_COMMIT: "90482664a879e825c2e0cfdaf7da3b42c1619940"
           # TARGET_COMMIT: "bd3d7dc2d981ebb3c7005929bbf69d73e3d0e34f"
           # TARGET_COMMIT: "1dd2fe49bf081eada55bcd660965f059408032ba"
