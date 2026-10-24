@@ -75,9 +75,9 @@ jobs:
           # TARGET_COMMIT: "d1b1e4451716a34e9c5eb46b78999ff92e71c3a1" # v0.8.5_1 #### this one works, the `c3c build` of the stdlib fails
           # TARGET_COMMIT: "0a4e87be0fc851cb23c2d0a121b3d76907d4be23"
           # TARGET_COMMIT: "77cc11ba4e2d89c063a2d087ef493c83e0fd4978"
-          # TARGET_COMMIT: "640091d3303a393f9651d644063b837fc19d05f1"
+          TARGET_COMMIT: "640091d3303a393f9651d644063b837fc19d05f1"
           # TARGET_COMMIT: "b8bcba0b22e88b55495016ce59d405e5d76f950a"
-          TARGET_COMMIT: "9bf299b369f86f0b50c1a8b3382a17e2f0f803d9"
+          #TARGET_COMMIT: "9bf299b369f86f0b50c1a8b3382a17e2f0f803d9" no CI artifact, 
           # TARGET_COMMIT: "38e3b475624912b8deaa4ba847807115343dfe07"
           # TARGET_COMMIT: "3477d758c883aa671ff89c27d32691a22bf20144"
           # TARGET_COMMIT: "dc2da14e31de61440fa558bbf2c2c62c5f9e3034"
