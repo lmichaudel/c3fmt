@@ -41,7 +41,7 @@ jobs:
 
       - uses: ManuLinares/setup-c3@v1
         with:
-          version: "0.8.5_1"
+          version: nightly
 
       - name: Build tree-sitter static library
         run: |
@@ -50,12 +50,20 @@ jobs:
           fi
           bash scripts/build_tree_sitter_static.sh
 
-      - name: Run tests
+      - name: Build tests
         run: |
           if [[ "$RUNNER_OS" == "Windows" ]]; then
-            c3c test -vv --test-show-output --wincrt=static
+            c3c test -vv --suppress-run --wincrt=static
           else
-            c3c test -vv --test-show-output
+            c3c test -vv --suppress-run
+          fi
+
+      - name: Execute tests
+        run: |
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            ./build/testrun.exe
+          else
+            ./build/testrun
           fi
 
       - name: Compile formatted standard library
