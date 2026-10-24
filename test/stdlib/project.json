@@ -12,7 +12,7 @@
   "wincrt": "static",
   "targets": {
     "stdlib": {
-      "type": "static-lib"
+      "type": "object-files"
     }
   },
   "cpu": "generic",
