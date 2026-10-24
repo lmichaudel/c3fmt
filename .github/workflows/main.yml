@@ -144,7 +144,7 @@ jobs:
       - name: Compile formatted standard library
         continue-on-error: true
         working-directory: test/stdlib
-        run: c3c build -vv -g0
+        run: c3c build -vv -g0 --threads 1
 
       - name: Setup static build (Linux)
         if: runner.os == 'Linux'
