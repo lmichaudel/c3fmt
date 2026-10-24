@@ -151,10 +151,10 @@ jobs:
             exit 0
           fi
 
-          # Test CDB (Windows SDK Console Debugger)
+          # Test CDB (Windows SDK Console Debugger) with debug heap disabled
           CDB=$(find "/c/Program Files (x86)/Windows Kits/10/Debuggers" -name cdb.exe 2>/dev/null | grep -i "arm64" | head -1 || true)
           if [[ -n "$CDB" && -x "$CDB" ]]; then
-            timeout 60s "$CDB" -g -G -sxe av -c "g; k; q" c3c build -vv -g0 < /dev/null || true
+            timeout 60s "$CDB" -hd -g -G -sxe av -c "g; k 50; q" c3c build -vv -g0 < /dev/null || true
             exit 0
           fi
 
