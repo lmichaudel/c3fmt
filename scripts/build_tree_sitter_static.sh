@@ -53,6 +53,11 @@ elif [[ "$OS" == MINGW* || "$OS" == MSYS* || "$OS" == CYGWIN* ]]; then
         "-DCMAKE_POLICY_DEFAULT_CMP0091=NEW"
         "-DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded"
     )
+    if [[ "${RUNNER_ARCH:-}" == "ARM64" || "${PROCESSOR_ARCHITECTURE:-}" == "ARM64" || "$(uname -m)" == "aarch64" || "$(uname -m)" == "arm64" ]]; then
+        EXTRA_CMAKE_FLAGS+=("-A" "ARM64")
+    else
+        EXTRA_CMAKE_FLAGS+=("-A" "x64")
+    fi
 fi
 
 echo "Configuring (static) ..."

@@ -22,7 +22,7 @@ struct Context
 Context g_ctx;
 
 
-fn void stability_worker_task(any[] args) => @pool_init(mem, 1024 * 1024)
+fn void stability_worker_task(void* arg) => @pool_init(mem, 1024 * 1024)
 {
     while (true)
     {
@@ -97,16 +97,15 @@ fn void stability() @test
     g_ctx.results = &results;
 
     int num_threads = os::num_cpu();
-    FixedThreadPool pool;
-    pool.init(num_threads, num_threads)!!;
-    defer pool.stop_and_destroy();
+    ThreadPool pool;
+    pool.init(mem, num_threads)!!;
 
-    for (sz i = 0; i < num_threads; i++)
+    for (sz i = 0; i < (sz)num_threads; i++)
     {
-        pool.push(&stability_worker_task)!!;
+        pool.add_task(&stability_worker_task, null)!!;
     }
 
-    pool.join();
+    pool.destroy();
 
     defer io::printfn("Stability test result: %d formatted, %d skipped due to syntax errors, %d format errors",
 		results.formatted.load(), results.skipped.load(), results.errors.load());

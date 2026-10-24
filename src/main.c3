@@ -90,14 +90,19 @@ fn Config resolve_config_for_file(String path, Config default_config) @local
 	return find_config(path) ?? default_config;
 }
 
-fn void format_worker(any[] args)
+struct FormatTask
 {
-	String path = *(String*)args[0].ptr;
-	Config config = *(Config*)args[1].ptr;
-	Context* ctx = *(Context**)args[2].ptr;
-	if (catch exc = format_file(path, config, ctx))
+	String path;
+	Config config;
+	Context* ctx;
+}
+
+fn void format_worker(void* arg)
+{
+	FormatTask* task = (FormatTask*)arg;
+	if (catch exc = format_file(task.path, task.config, task.ctx))
 	{
-		io::eprintfn("Error: could not format file %s: %s.", path, exc);
+		io::eprintfn("Error: could not format file %s: %s.", task.path, exc);
 	}
 }
 
@@ -258,17 +263,23 @@ fn int main(String[] args)
 
 	if (files.len() == 0) return 0;
 
-	FixedThreadPool pool;
-	ThreadSettings settings = { .stack_size = 8388608 };
-	pool.init(os::num_cpu(), files.len(), settings)!!;
-	defer (void)pool.destroy();
+	FormatTask[] tasks = alloc::alloc_array(mem, FormatTask, files.len());
+	defer alloc::free(mem, tasks);
 
-	foreach (path : files)
+	ThreadPool pool;
+	ThreadSettings settings = { .stack_size = 8388608 };
+	pool.init(mem, os::num_cpu(), 0, time::MIN, settings)!!;
+
+	foreach (i, path : files)
 	{
-		Config file_config = resolve_config_for_file(path, config);
-		pool.push(&format_worker, path, file_config, &ctx)!!;
+		tasks[i] = {
+			.path = path,
+			.config = resolve_config_for_file(path, config),
+			.ctx = &ctx,
+		};
+		pool.add_task(&format_worker, &tasks[i])!!;
 	}
-	pool.join();
+	pool.destroy();
 
 	return ctx.has_mismatch ? 1 : 0;
 }

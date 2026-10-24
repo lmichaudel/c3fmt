@@ -42,7 +42,7 @@ struct Context
 Context g_ctx;
 
 
-fn void stdlib_worker_task(any[] args)
+fn void stdlib_worker_task(void* arg)
 {
     while (true)
     {
@@ -115,16 +115,15 @@ fn void format_and_compile_std_lib() @test
     g_ctx.results = &results;
 
     int num_threads = os::num_cpu();
-    FixedThreadPool pool;
-    pool.init(num_threads, num_threads)!!;
-    defer pool.stop_and_destroy();
+    ThreadPool pool;
+    pool.init(mem, num_threads)!!;
 
     for (int i = 0; i < num_threads; i++)
     {
-        pool.push(&stdlib_worker_task)!!;
+        pool.add_task(&stdlib_worker_task, null)!!;
     }
 
-    pool.join();
+    pool.destroy();
 
     io::printfn("Stdlib    test result: %d formatted, %d skipped due to syntax errors.", results.formatted.load(), results.skipped.load());
 }
