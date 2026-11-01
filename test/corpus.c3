@@ -224,3 +224,7 @@ fn void trailing_comma() @test {
 fn void sequence_line_comment() @test {
     test("sequence_line_comment", "test/corpus/sequence_line_comment.c3", "test/corpus/sequence_line_comment_f.c3");
 }
+
+fn void compound_statements() @test {
+    test("compound_statements", "test/corpus/compound_statements.c3", "test/corpus/compound_statements_f.c3");
+}

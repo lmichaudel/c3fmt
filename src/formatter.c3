@@ -2426,7 +2426,16 @@ fn void C3Fmt.process_node(
 		/* STATEMENTS & CONTROL FLOW */
 		/* ======================================== */
 		case "compound_stmt":
-			self.open_brace(force_newline: inside_compound);
+			if (inside_compound)
+			{
+				self.buf.text("{");
+				self.buf.newline();
+				self.indent();
+			}
+			else
+			{
+				self.open_brace();
+			}
 			self.process_compound(node);
 			self.close_brace();
 
