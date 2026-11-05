@@ -54,6 +54,20 @@ fn void C3Fmt.free(&self)
 	self.dstr_buf.free();
 }
 
+// Wrap priorities: higher priority wraps earlier (preferred break points).
+// Method chains have highest priority so chained calls break before their arguments.
+// Lists, arguments, parameters, initializers, faultdefs, and ternaries break next.
+// Binary operators break after lists.
+const usz WRAP_PRIO_LOWEST        = 0;
+const usz WRAP_PRIO_BINARY_EXPR   = 1;
+const usz WRAP_PRIO_CALL_ARG      = 2;
+const usz WRAP_PRIO_INITIALIZER   = 2;
+const usz WRAP_PRIO_PARAM_LIST    = 2;
+const usz WRAP_PRIO_FAULTDEF      = 2;
+const usz WRAP_PRIO_CONCAT_STRING = 2;
+const usz WRAP_PRIO_COND_EXPR     = 2;
+const usz WRAP_PRIO_METHOD_CHAIN  = 3;
+
 fn usz C3Fmt.begin_wrap_group(&self, usz priority, bool force_wrap = false)
 {
 	self.next_group_id++;
@@ -1021,7 +1035,7 @@ fn void C3Fmt.process_concat_literals(&self, TSNode node)
 		return;
 	}
 
-	usz id = self.begin_wrap_group(2);
+	usz id = self.begin_wrap_group(WRAP_PRIO_CONCAT_STRING);
 
 	// When aligning, continuation literals line up under the first literal's
 	// column; otherwise they hang one indent level below.
@@ -1784,7 +1798,7 @@ fn void C3Fmt.process_node(
 			);
 		case "func_param_list":
 			bool force_wrap = node.ends_with_trailing_comma(")");
-			usz id = self.begin_wrap_group(2, force_wrap);
+			usz id = self.begin_wrap_group(WRAP_PRIO_PARAM_LIST, force_wrap);
 			self.process_composite(
 				node,
 				skip_space_type: { ")", "," },
@@ -1851,7 +1865,7 @@ fn void C3Fmt.process_node(
 			if (node.has_child_of_type("param"))
 			{
 				bool force_wrap = node.ends_with_trailing_comma(")");
-				usz id = self.begin_wrap_group(2, force_wrap);
+				usz id = self.begin_wrap_group(WRAP_PRIO_PARAM_LIST, force_wrap);
 				self.process_composite(
 					node,
 					skip_space_type: { ")", ",", ";" },
@@ -2044,11 +2058,11 @@ fn void C3Fmt.process_node(
 					{
 						self.buf.newline();
 						self.indent();
-						id = self.begin_wrap_group(2);
+						id = self.begin_wrap_group(WRAP_PRIO_FAULTDEF);
 					}
 					else
 					{
-						id = self.begin_wrap_group(2);
+						id = self.begin_wrap_group(WRAP_PRIO_FAULTDEF);
 					}
 					continue;
 				}
@@ -2206,7 +2220,7 @@ fn void C3Fmt.process_node(
 			if (node.has_child_of_type("call_arg"))
 			{
 				bool force_wrap = node.ends_with_trailing_comma(")");
-				usz id = self.begin_wrap_group(2, force_wrap);
+				usz id = self.begin_wrap_group(WRAP_PRIO_CALL_ARG, force_wrap);
 				self.process_composite(
 					node,
 					skip_space_type: { ")", "," },
@@ -2263,7 +2277,7 @@ fn void C3Fmt.process_node(
 			}
 
 			// Reuse the enclosing chain's group_id, otherwise create a new group.
-			expr_id = expr_id ?: self.begin_wrap_group(2);
+			expr_id = expr_id ?: self.begin_wrap_group(WRAP_PRIO_COND_EXPR);
 
 			self.process_composite(node, add_wrap_point_fn: fn (String type, String field, usz id)
 			{
@@ -2272,7 +2286,7 @@ fn void C3Fmt.process_node(
 		case "maybe_deref_expr":
 			self.process_sequence(node);
 		case "binary_expr":
-			usz id = self.begin_wrap_group(1);
+			usz id = self.begin_wrap_group(WRAP_PRIO_BINARY_EXPR);
 			self.process_composite(
 				node,
 				add_wrap_point_fn: fn (String type, String field, usz id)
@@ -2326,7 +2340,7 @@ fn void C3Fmt.process_node(
 				}
 				else
 				{
-					usz id = self.begin_wrap_group(2, has_trailing_comma);
+					usz id = self.begin_wrap_group(WRAP_PRIO_INITIALIZER, has_trailing_comma);
 					self.process_composite(
 						node,
 						skip_space_type: { "," },
@@ -2395,21 +2409,28 @@ fn void C3Fmt.process_node(
 			if (node.has_child_of_type(".")
 				&& ts::node_parent(node).type() != "param_path")
 			{
-				bool is_method_chain = node.has_child_of_type("call_expr");
-				usz priority = is_method_chain ? 3 : 0;
-				usz id = self.begin_wrap_group(priority);
-				self.process_sequence(
-					node,
-					add_wrap_point_fn: fn (String type, String field, usz id)
+				bool is_method_chain = node.has_child_of_type("call_expr")
+					&& ts::node_parent(node).type() == "call_expr";
+				if (is_method_chain)
 				{
-					switch (type)
+					usz id = self.begin_wrap_group(WRAP_PRIO_METHOD_CHAIN);
+					self.process_sequence(
+						node,
+						add_wrap_point_fn: fn (String type, String field, usz id)
 					{
-						case ".":
-							return { .indent = 1, .group_id = id };
-						default:
-							return NO_WRAP~;
-					}
-				}, group_id: id);
+						switch (type)
+						{
+							case ".":
+								return { .indent = 1, .group_id = id };
+							default:
+								return NO_WRAP~;
+						}
+					}, group_id: id);
+				}
+				else
+				{
+					self.process_sequence(node);
+				}
 			}
 			else
 			{
@@ -2789,4 +2810,3 @@ fn void C3Fmt.process_node(
 			// unreachable();
 	}
 }
-
