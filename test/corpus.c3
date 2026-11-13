@@ -274,3 +274,8 @@ fn void align_wrap_cycle() @test
 {
 	test("align_wrap_cycle", "test/corpus/align_wrap_cycle.c3", "test/corpus/align_wrap_cycle_f.c3");
 }
+
+fn void doc_code_block() @test
+{
+	test("doc_code_block", "test/corpus/doc_code_block.c3", "test/corpus/doc_code_block_f.c3");
+}
